@@ -16,7 +16,16 @@ include_HEADERS = multicoder.h
 
 bin_PROGRAMS = multicoder
 
-libmulticoder_la_SOURCES = multicoder.h mc_log.c mc_h264_decoder.c mc_buffer.c mc_buffer.h
+libmulticoder_la_SOURCES = \
+	mc_buffer.c \
+	mc_buffer.h \
+	mc_demux.c \
+	mc_h264_decoder.c \
+	mc_log.c \
+	mc_mux_hls.c \
+	mc_queue.c \
+	mc_queue.h \
+	multicoder.h
 
 libmulticoder_la_CFLAGS = $(LIBAV_CFLAGS)
 libmulticoder_la_LDFLAGS = -avoid-version $(LIBAV_LDFLAGS)

@@ -10,6 +10,7 @@
 #include "jd_pretty.h"
 
 #include "mc_buffer.h"
+#include "mc_queue.h"
 
 #define MC_ERROR_LEVELS \
   X(ERROR)    \
@@ -36,6 +37,8 @@ void mc_error(const char *msg, ...);
 void mc_fatal(const char *msg, ...);
 
 void mc_h264_decoder(mc_buffer_reader *in, mc_buffer *out);
+void mc_demux(AVFormatContext *fcx, mc_queue *aq, mc_queue *vq);
+void mc_mux_hls(jd_var *cfg, mc_queue *in);
 
 #endif
 

@@ -5,9 +5,15 @@
          "streams" : [
             {
                "audio" : {
-                  "type" : "direct"
+                  "bit_rate" : 96000,
+                  "slave" : "hd",
+                  "type" : "aac"
                },
                "name" : "sd",
+               "output" : {
+                  "playlist" : "sd.m3u8",
+                  "segment" : "sd/%08d.ts"
+               },
                "video" : {
                   "bit_rate" : 800000,
                   "height" : 360,
@@ -21,6 +27,10 @@
                   "type" : "direct"
                },
                "name" : "hd",
+               "output" : {
+                  "playlist" : "hd.m3u8",
+                  "segment" : "hd/%08d.ts"
+               },
                "video" : {
                   "type" : "direct"
                }
@@ -30,6 +40,10 @@
                   "type" : "direct"
                },
                "name" : "mobile",
+               "output" : {
+                  "playlist" : "mobile.m3u8",
+                  "segment" : "mobile/%08d.ts"
+               },
                "video" : {
                   "bit_rate" : 380000,
                   "height" : 224,
