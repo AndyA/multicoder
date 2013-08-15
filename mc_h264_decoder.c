@@ -18,6 +18,7 @@
 
 static void send_frame(mc_buffer *out, const uint8_t *buf,
                        unsigned wrap, unsigned xsize, unsigned ysize) {
+  mc_debug("Send frame [%u x %u]", xsize, ysize);
   for (unsigned y = 0; y < ysize; y++)
     mc_buffer_send_input(out, buf + y * wrap, xsize);
 }
@@ -29,8 +30,13 @@ static unsigned decode_and_send(mc_buffer *out,
 
   int len, got_frame;
 
+  mc_debug("decode_and_send(%p, %u)", pkt->data, (unsigned) pkt->size);
+
   len = avcodec_decode_video2(avctx, frame, &got_frame, pkt);
-  if (len < 0) jd_throw("Decode error");
+  if (len < 0) {
+    /*    jd_throw("Decode error");*/
+    mc_error("Decode error");
+  }
 
   if (got_frame)
     send_frame(out, frame->data[0], frame->linesize[0],
@@ -54,6 +60,7 @@ void mc_h264_decoder(mc_buffer_reader *in, mc_buffer *out) {
 
   av_init_packet(&avpkt);
 
+  /*  codec = avcodec_find_decoder_by_name("libx264");*/
   codec = avcodec_find_decoder(AV_CODEC_ID_H264);
   if (!codec) jd_throw("Codec not found");
 

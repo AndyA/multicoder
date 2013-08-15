@@ -35,6 +35,8 @@ void mc_warning(const char *msg, ...);
 void mc_error(const char *msg, ...);
 void mc_fatal(const char *msg, ...);
 
+void mc_h264_decoder(mc_buffer_reader *in, mc_buffer *out);
+
 #endif
 
 /* vim:ts=2:sw=2:sts=2:et:ft=c

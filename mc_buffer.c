@@ -7,6 +7,7 @@
 static void *alloc(size_t sz) {
   void *m = malloc(sz);
   if (!m) abort();
+  memset(m, 0, sz);
   return m;
 }
 
