@@ -1,0 +1,44 @@
+{
+   "tasks" : [
+      {
+         "name" : "a",
+         "streams" : [
+            {
+               "audio" : {
+                  "type" : "direct"
+               },
+               "name" : "sd",
+               "video" : {
+                  "bit_rate" : 800000,
+                  "height" : 360,
+                  "slave" : "hd",
+                  "type" : "h264",
+                  "width" : 640
+               }
+            },
+            {
+               "audio" : {
+                  "type" : "direct"
+               },
+               "name" : "hd",
+               "video" : {
+                  "type" : "direct"
+               }
+            },
+            {
+               "audio" : {
+                  "type" : "direct"
+               },
+               "name" : "mobile",
+               "video" : {
+                  "bit_rate" : 380000,
+                  "height" : 224,
+                  "slave" : "hd",
+                  "type" : "h264",
+                  "width" : 400
+               }
+            }
+         ]
+      }
+   ]
+}

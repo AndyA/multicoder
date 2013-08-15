@@ -1,10 +1,9 @@
 /* multicoder.c */
 
-#include <stdio.h>
-
 #include "multicoder.h"
 
 int main(void) {
+  mc_info("Starting multicoder");
   return 0;
 }
 

@@ -9,6 +9,8 @@
 
 #include "jd_pretty.h"
 
+#include "mc_buffer.h"
+
 #define MC_ERROR_LEVELS \
   X(ERROR)    \
   X(FATAL)    \

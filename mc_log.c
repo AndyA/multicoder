@@ -40,7 +40,7 @@ static void ts(char *buf, size_t sz) {
   size_t len;
   gettimeofday(&tv, NULL);
   tmp = gmtime(&tv.tv_sec);
-  if (!tmp) die("gmtime failed: %m");
+  if (!tmp) jd_throw("gmtime failed: %m");
   len = strftime(buf, sz, TS_FORMAT, tmp);
   snprintf(buf + len, sz - len, ".%06lu", (unsigned long) tv.tv_usec);
 }
