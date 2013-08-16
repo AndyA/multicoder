@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <libavformat/avformat.h>
+
 #include "jd_pretty.h"
 
 #include "mc_buffer.h"

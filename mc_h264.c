@@ -23,6 +23,8 @@ static unsigned transcode(mc_queue *qo,
 
   int len, got_frame;
 
+  (void) qo;
+
   mc_debug("transcode(%p, %u)", pkt->data, (unsigned) pkt->size);
 
   len = avcodec_decode_video2(avctx, frame, &got_frame, pkt);
@@ -52,6 +54,8 @@ void mc_h264(jd_var *cfg, mc_queue *qi, mc_queue *qo) {
   AVPacket avpkt;
   mc_buffer_iov iiov;
 
+  (void) cfg;
+
   av_init_packet(&avpkt);
 
   codec = avcodec_find_decoder(AV_CODEC_ID_H264);
@@ -74,7 +78,7 @@ void mc_h264(jd_var *cfg, mc_queue *qi, mc_queue *qo) {
   frame = avcodec_alloc_frame();
   if (!frame) jd_throw("Can't allocate frame");
 
-  while (mc_queue_get(qi, &avpkt)) {
+  while (mc_queue_packet_get(qi, &avpkt)) {
     transcode(qo, c, frame, &avpkt);
   }
 

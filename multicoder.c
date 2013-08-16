@@ -27,11 +27,6 @@ static int dts_compare(AVPacket *a, AVPacket *b, void *ctx) {
   return a->dts < b->dts ? -1 : a->dts > b->dts ? 1 : 0;
 }
 
-static int pts_compare(AVPacket *a, AVPacket *b, void *ctx) {
-  (void) ctx;
-  return a->pts < b->pts ? -1 : a->pts > b->pts ? 1 : 0;
-}
-
 int main(int argc, char *argv[]) {
   AVFormatContext *fcx = NULL;
   muxer hls;
@@ -56,8 +51,8 @@ int main(int argc, char *argv[]) {
   pthread_create(&hls.t, NULL, hls_muxer, &hls);
 
   mc_demux(fcx, aq, vq);
-  mc_queue_put(aq, NULL);
-  mc_queue_put(vq, NULL);
+  mc_queue_packet_put(aq, NULL);
+  mc_queue_packet_put(vq, NULL);
 
   pthread_join(hls.t, NULL);
 

@@ -20,7 +20,7 @@ void mc_mux_hls(jd_var *cfg, mc_queue_merger *qm) {
 
   av_init_packet(&pkt);
 
-  while (mc_queue_merger_get(qm, &pkt)) {
+  while (mc_queue_merger_packet_get(qm, &pkt)) {
     mc_debug("HLS got %d (flags=%08x, pts=%llu, dts=%llu, duration=%d)",
              pkt.stream_index, pkt.flags,
              (unsigned long long) pkt.pts,

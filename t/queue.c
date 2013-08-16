@@ -22,14 +22,14 @@ static void test_non_full(void) {
     if (!ok(q->used == 0, "try %d: q->used == 0 (before)", t))
       diag("q->used = %d", q->used);
     for (unsigned i = 0; i < 5; i++)
-      mc_queue_put(q, &pkt);
+      mc_queue_packet_put(q, &pkt);
 
     if (!ok(q->used == 5, "try %d: q->used == 5 (during)", t))
       diag("q->used = %d", q->used);
 
     int count = 0;
-    while (mc_queue_peek(q)) {
-      mc_queue_get(q, &pkt);
+    while (mc_queue_packet_peek(q)) {
+      mc_queue_packet_get(q, &pkt);
       count++;
     }
 

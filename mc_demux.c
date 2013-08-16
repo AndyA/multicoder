@@ -27,9 +27,9 @@ void mc_demux(AVFormatContext *fcx, mc_queue *aq, mc_queue *vq) {
   while (av_read_frame(fcx, &pkt) >= 0) {
     av_dup_packet(&pkt); /* force refcount */
     if (pkt.stream_index == aud)
-      mc_queue_put(aq, &pkt);
+      mc_queue_packet_put(aq, &pkt);
     else if (pkt.stream_index == vid)
-      mc_queue_put(vq, &pkt);
+      mc_queue_packet_put(vq, &pkt);
 
     av_free_packet(&pkt);
   }
