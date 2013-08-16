@@ -23,17 +23,19 @@ static void test_non_full(void) {
       diag("q->used = %d", q->used);
     for (unsigned i = 0; i < 5; i++)
       mc_queue_put(q, &pkt);
-    mc_queue_put(q, NULL);
 
-    if (!ok(q->used == 6, "try %d: q->used == 6 (during)", t))
+    if (!ok(q->used == 5, "try %d: q->used == 5 (during)", t))
       diag("q->used = %d", q->used);
 
     int count = 0;
-    while (mc_queue_get(q, &pkt))
+    while (mc_queue_peek(q)) {
+      mc_queue_get(q, &pkt);
       count++;
+    }
 
+    if (!ok(count == 5, "try %d: five packets queued, retrieved", t))
+      diag("count = %d", count);
 
-    ok(count == 5, "try %d: five packets queued, retrieved", t);
     if (!ok(q->used == 0, "try %d: q->used == 0 (after)", t))
       diag("q->used = %d", q->used);
   }
