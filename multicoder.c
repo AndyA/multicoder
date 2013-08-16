@@ -39,6 +39,7 @@ static int dts_compare(mc_queue_entry *a, mc_queue_entry *b, void *ctx) {
 }
 
 int main(int argc, char *argv[]) {
+  srand((unsigned) time(NULL));
   scope {
     AVFormatContext *fcx = NULL;
 
