@@ -1,4 +1,4 @@
-TESTBIN = basic queue
+TESTBIN = basic queue sequence
 
 TESTPERL = basic.t
 

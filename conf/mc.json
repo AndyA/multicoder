@@ -12,7 +12,7 @@
                "name" : "sd",
                "output" : {
                   "playlist" : "sd.m3u8",
-                  "segment" : "sd/%08d.ts"
+                  "segment" : "sd/%6a/%6a.ts"
                },
                "video" : {
                   "bit_rate" : 800000,
