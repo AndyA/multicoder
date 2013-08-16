@@ -55,7 +55,6 @@ void mc_h264_decoder(mc_buffer_reader *in, mc_buffer *out) {
   AVCodecContext *c;
   AVFrame *frame;
   AVPacket avpkt;
-  unsigned frame_count;
   mc_buffer_iov iiov;
 
   av_init_packet(&avpkt);
@@ -84,7 +83,7 @@ void mc_h264_decoder(mc_buffer_reader *in, mc_buffer *out) {
   for (;;) {
     size_t got = mc_buffer_wait_output(in, &iiov);
     if (got == 0) break;
-    for (unsigned i = 0; i < iiov.iovcnt; i++) {
+    for (int i = 0; i < iiov.iovcnt; i++) {
       avpkt.size = iiov.iov[i].iov_len;
       avpkt.data = iiov.iov[i].iov_base;
       while (avpkt.size > 0)

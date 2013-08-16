@@ -13,7 +13,7 @@ static void *alloc(size_t sz) {
 }
 
 mc_queue *mc_queue_new(size_t size) {
-  mc_queue *q = alloc(sizeof(mc_queue));
+  mc_queue *q = alloc(sizeof(*q));
   q->max_size = size;
   q->used = 0;
   pthread_mutex_init(&q->mutex, NULL);
@@ -37,10 +37,10 @@ static void free_entries(mc_queue_entry *qe) {
 }
 
 void mc_queue_free(mc_queue *q) {
-  if (q) {
+  for (mc_queue *next = q; next; q = next) {
     free_entries(q->head);
     free_entries(q->free);
-    mc_queue_free(q->next);
+    next = q->next;
     free(q);
   }
 }
@@ -58,9 +58,10 @@ static mc_queue_entry *get_entry(mc_queue *q) {
 void mc_queue_put(mc_queue *q, AVPacket *pkt) {
   mc_queue_entry *qe;
 
-  pthread_mutex_lock(&q->mutex);
+  if (q->m)
+    pthread_mutex_lock(&q->m->mutex);
 
-  if (q->tail && q->tail->eof) jd_throw("EOF already seen on queue");
+  pthread_mutex_lock(&q->mutex);
 
   while (q->used == q->max_size)
     pthread_cond_wait(&q->can_put, &q->mutex);
@@ -85,10 +86,9 @@ void mc_queue_put(mc_queue *q, AVPacket *pkt) {
 
   pthread_mutex_unlock(&q->mutex);
 
-  if (q->can_get_multi) {
-    pthread_mutex_lock(q->mutex_multi);
-    pthread_cond_signal(q->can_get_multi);
-    pthread_mutex_unlock(q->mutex_multi);
+  if (q->m) {
+    pthread_cond_signal(&q->m->can_get);
+    pthread_mutex_unlock(&q->m->mutex);
   }
 }
 
@@ -98,7 +98,6 @@ void mc_queue_multi_put(mc_queue *q, AVPacket *pkt) {
 
 int mc_queue_get(mc_queue *q, AVPacket *pkt) {
   mc_queue_entry *qe;
-  int eof;
 
   pthread_mutex_lock(&q->mutex);
   while (!q->head)
@@ -108,7 +107,8 @@ int mc_queue_get(mc_queue *q, AVPacket *pkt) {
   q->head = qe->next;
   if (q->head == NULL) q->tail = NULL;
 
-  if (eof = qe->eof, !eof) * pkt = qe->pkt;
+  if (qe->eof) q->eof = 1;
+  else *pkt = qe->pkt;
 
   memset(qe, 0, sizeof(*qe)); /* trample cloned pkt ref */
   qe->next = q->free;
@@ -118,7 +118,7 @@ int mc_queue_get(mc_queue *q, AVPacket *pkt) {
   pthread_cond_broadcast(&q->can_put);
   pthread_mutex_unlock(&q->mutex);
 
-  return !eof;
+  return !q->eof;
 }
 
 AVPacket *mc_queue_peek(mc_queue *q) {
@@ -129,33 +129,47 @@ AVPacket *mc_queue_peek(mc_queue *q) {
   return head ? &head->pkt : NULL;
 }
 
-int mc_queue_ready(mc_queue *q) {
-  pthread_mutex_lock(&q->mutex);
-  int ready = (q->tail && q->tail->eof) || q->head;
-  pthread_mutex_unlock(&q->mutex);
-  return ready;
+mc_queue_merger *mc_queue_merger_new(mc_queue_comparator qc, void *ctx) {
+  mc_queue_merger *qm = alloc(sizeof(*qm));
+  qm->qc = qc;
+  qm->ctx = ctx;
+  pthread_mutex_init(&qm->mutex, NULL);
+  pthread_cond_init(&qm->can_get, NULL);
+  return qm;
 }
 
-int mc_queue_full(mc_queue *q) {
-  pthread_mutex_lock(&q->mutex);
-  int full = q->used == q->max_size;
-  pthread_mutex_unlock(&q->mutex);
-  return full;
+void mc_queue_merger_add(mc_queue_merger *qm, mc_queue *q) {
+  q->mnext = qm->head;
+  qm->head = q;
+  q->m = qm;
 }
 
-int mc_queue_multi_get_nb(mc_queue *qs[], AVPacket *pkt,
-                          mc_queue_comparator qc, void *ctx, int *got) {
-  unsigned pos = 0;
-  unsigned nready = 0, nfull = 0;
+void mc_queue_merger_empty(mc_queue_merger *qm) {
+  for (mc_queue *q = qm->head; q; q = q->mnext) q->m = NULL;
+  qm->head = NULL;
+}
+
+void mc_queue_merger_free(mc_queue_merger *qm) {
+  mc_queue_merger_empty(qm);
+  free(qm);
+}
+
+int mc_queue_merger_get_nb(mc_queue_merger *qm, AVPacket *pkt, int *got) {
+  unsigned nready = 0, nfull = 0, neof = 0, nqueue = 0;
 
   mc_queue *nq, *bq = NULL;
   AVPacket *bp = NULL;
 
   *got = 0;
 
-  while ((nq = qs[pos++])) {
-    if (mc_queue_ready(nq)) nready++;
-    if (mc_queue_full(nq)) nfull++;
+  for (nq = qm->head; nq; nq = nq->mnext) {
+
+    pthread_mutex_lock(&nq->mutex);
+    if (nq->used == nq->max_size) nfull++;
+    if (nq->used) nready++;
+    if (nq->eof) neof++;
+    pthread_mutex_unlock(&nq->mutex);
+    nqueue++;
 
     AVPacket *np = mc_queue_peek(nq);
 
@@ -163,54 +177,36 @@ int mc_queue_multi_get_nb(mc_queue *qs[], AVPacket *pkt,
       bq = nq;
       bp = np;
     }
-    else if (bp == NULL || (np && qc(bp, np, ctx) > 0)) {
+    else if (bp == NULL || (np && qm->qc(bp, np, qm->ctx) > 0)) {
       bp = np;
       bq = nq;
     }
   }
 
-  if (bp && (nfull || nready == pos)) {
+  if (bp && (nfull || nready + neof == nqueue))
+    *got = mc_queue_get(bq, pkt);
+  else if (neof == nqueue)
     *got = 1;
-    return mc_queue_get(bq, pkt);
-  }
 
-  return 1; /* not eof, just nothing to read */
+  return neof < nqueue;
 }
 
-int mc_queue_multi_get(mc_queue *qs[], AVPacket *pkt,
-                       mc_queue_comparator qc, void *ctx) {
-  int pos, got = 0;
-  int eof = mc_queue_multi_get_nb(qs, pkt, qc, ctx, &got);
-  if (got) return eof;
+int mc_queue_merger_get(mc_queue_merger *qm, AVPacket *pkt) {
+  int got = 0;
+  int more = mc_queue_merger_get_nb(qm, pkt, &got);
+  if (got) return more;
 
-  pthread_cond_t can_get_multi = PTHREAD_COND_INITIALIZER;
-  pthread_mutex_t mutex_multi = PTHREAD_MUTEX_INITIALIZER;
-
-  for (pos = 0; qs[pos]; pos++) {
-    pthread_mutex_lock(&qs[pos]->mutex);
-    qs[pos]->can_get_multi = &can_get_multi;
-    qs[pos]->mutex_multi = &mutex_multi;
-    pthread_mutex_unlock(&qs[pos]->mutex);
-  }
-
-  pthread_mutex_lock(&mutex_multi);
+  pthread_mutex_lock(&qm->mutex);
 
   for (;;) {
-    eof = mc_queue_multi_get_nb(qs, pkt, qc, ctx, &got);
+    more = mc_queue_merger_get_nb(qm, pkt, &got);
     if (got) break;
-    pthread_cond_wait(&can_get_multi, &mutex_multi);
+    pthread_cond_wait(&qm->can_get, &qm->mutex);
   }
 
-  pthread_mutex_unlock(&mutex_multi);
+  pthread_mutex_unlock(&qm->mutex);
 
-  for (pos = 0; qs[pos]; pos++) {
-    pthread_mutex_lock(&qs[pos]->mutex);
-    qs[pos]->can_get_multi = NULL;
-    qs[pos]->mutex_multi = NULL;
-    pthread_mutex_unlock(&qs[pos]->mutex);
-  }
-
-  return eof;
+  return more;
 }
 
 /* vim:ts=2:sw=2:sts=2:et:ft=c

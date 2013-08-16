@@ -38,7 +38,7 @@ void mc_fatal(const char *msg, ...);
 
 void mc_h264_decoder(mc_buffer_reader *in, mc_buffer *out);
 void mc_demux(AVFormatContext *fcx, mc_queue *aq, mc_queue *vq);
-void mc_mux_hls(jd_var *cfg, mc_queue *in);
+void mc_mux_hls(jd_var *cfg, mc_queue_merger *qm);
 
 #endif
 

@@ -13,16 +13,19 @@
 
 #include "multicoder.h"
 
-void mc_mux_hls(jd_var *cfg, mc_queue *in) {
+void mc_mux_hls(jd_var *cfg, mc_queue_merger *qm) {
   AVPacket pkt;
 
   (void) cfg;
 
   av_init_packet(&pkt);
 
-  while (mc_queue_get(in, &pkt)) {
-    mc_debug("HLS got %08x (pts=%llu, duration=%d)",
-             pkt.flags, pkt.pts, pkt.duration);
+  while (mc_queue_merger_get(qm, &pkt)) {
+    mc_debug("HLS got %d (flags=%08x, pts=%llu, dts=%llu, duration=%d)",
+             pkt.stream_index, pkt.flags,
+             (unsigned long long) pkt.pts,
+             (unsigned long long) pkt.dts,
+             pkt.duration);
     av_free_packet(&pkt);
   }
 

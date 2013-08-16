@@ -18,17 +18,32 @@ extern "C" {
 
   typedef int (*mc_queue_comparator)(AVPacket *a, AVPacket *b, void *ctx);
 
+  typedef struct mc_queue_merger mc_queue_merger;
+
   typedef struct mc_queue {
+    struct mc_queue *next, *mnext;
+
     size_t used;
     size_t max_size;
+    int eof;
+
     mc_queue_entry *head, *tail, *free;
-    struct mc_queue *next;
+    mc_queue_merger *m;
+
     pthread_mutex_t mutex;
     pthread_cond_t can_get;
     pthread_cond_t can_put;
-    pthread_mutex_t *mutex_multi;
-    pthread_cond_t *can_get_multi;
   } mc_queue;
+
+  struct mc_queue_merger {
+    mc_queue *head;
+
+    mc_queue_comparator qc;
+    void *ctx;
+
+    pthread_mutex_t mutex;
+    pthread_cond_t can_get;
+  };
 
   mc_queue *mc_queue_new(size_t size);
   void mc_queue_free(mc_queue *q);
@@ -37,11 +52,13 @@ extern "C" {
   void mc_queue_multi_put(mc_queue *q, AVPacket *pkt);
   int mc_queue_get(mc_queue *q, AVPacket *pkt);
   AVPacket *mc_queue_peek(mc_queue *q);
-  int mc_queue_ready(mc_queue *q);
-  int mc_queue_multi_get_nb(mc_queue *qs[], AVPacket *pkt,
-                            mc_queue_comparator qc, void *ctx, int *got);
-  int mc_queue_multi_get(mc_queue *qs[], AVPacket *pkt,
-                         mc_queue_comparator qc, void *ctx);
+
+  mc_queue_merger *mc_queue_merger_new(mc_queue_comparator qc, void *ctx);
+  void mc_queue_merger_add(mc_queue_merger *qm, mc_queue *q);
+  void mc_queue_merger_empty(mc_queue_merger *qm);
+  void mc_queue_merger_free(mc_queue_merger *qm);
+  int mc_queue_merger_get_nb(mc_queue_merger *qm, AVPacket *pkt, int *got);
+  int mc_queue_merger_get(mc_queue_merger *qm, AVPacket *pkt);
 
 #ifdef __cplusplus
 }

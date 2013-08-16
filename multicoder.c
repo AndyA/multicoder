@@ -12,21 +12,30 @@
 
 typedef struct {
   jd_var *cfg;
-  mc_queue *q;
+  mc_queue_merger *qm;
   pthread_t t;
 } muxer;
 
 static void *hls_muxer(void *ctx) {
-  muxer *mctx = ctx;
-  mc_mux_hls(mctx->cfg, mctx->q);
+  muxer *c = ctx;
+  mc_mux_hls(c->cfg, c->qm);
   return NULL;
+}
+
+static int dts_compare(AVPacket *a, AVPacket *b, void *ctx) {
+  return a->dts < b->dts ? -1 : a->dts > b->dts ? 1 : 0;
 }
 
 int main(int argc, char *argv[]) {
   AVFormatContext *fcx = NULL;
   muxer hls;
 
-  hls.q = mc_queue_new(100);
+  mc_queue *aq = mc_queue_new(100);
+  mc_queue *vq = mc_queue_new(100);
+
+  hls.qm = mc_queue_merger_new(dts_compare, NULL);
+  mc_queue_merger_add(hls.qm, aq);
+  mc_queue_merger_add(hls.qm, vq);
 
   mc_info("Starting multicoder");
 
@@ -40,13 +49,16 @@ int main(int argc, char *argv[]) {
 
   pthread_create(&hls.t, NULL, hls_muxer, &hls);
 
-  mc_demux(fcx, hls.q, hls.q);
-  mc_queue_put(hls.q, NULL);
+  mc_demux(fcx, aq, vq);
+  mc_queue_put(aq, NULL);
+  mc_queue_put(vq, NULL);
 
   pthread_join(hls.t, NULL);
 
   avformat_close_input(&fcx);
-  mc_queue_free(hls.q);
+  mc_queue_merger_free(hls.qm);
+  mc_queue_free(aq);
+  mc_queue_free(vq);
 
   return 0;
 }
