@@ -43,6 +43,7 @@ static mc_queue_entry *get_entry(mc_queue *q) {
   if (q->free) {
     mc_queue_entry *ent = q->free;
     q->free = ent->next;
+    ent->eof = 0;
     return ent;
   }
 
@@ -52,27 +53,35 @@ static mc_queue_entry *get_entry(mc_queue *q) {
 typedef void (*put_func)(mc_queue *q, mc_queue_entry *qe, void *ctx);
 typedef void (*get_func)(mc_queue *q, mc_queue_entry *qe, void *ctx);
 
+static const char *t_name = { "unknown", "packet", "frame" };
+
+static void check_type(mc_queue *q, mc_queue_type t) {
+  if (q->t == MC_UNKNOWN)
+    q->t = t;
+  else if (q->t != t)
+    jd_throw("Unexpected %s call on %s queue", t_name[t], t_name[q->t]);
+}
+
 static void put_packet(mc_queue *q, mc_queue_entry *qe, void *ctx) {
   AVPacket *pkt = (AVPacket *) ctx;
-
-  if (q->t == MC_UNKNOWN)
-    q->t = MC_PACKET;
-  else if (q->t != MC_PACKET)
-    jd_throw("Unexpected packet in queue");
-
-  if (pkt) {
-    av_copy_packet(&qe->d.pkt, pkt);
-    qe->eof = 0;
-  }
-  else {
-    qe->eof = 1;
-  }
+  check_type(q, MC_PACKET);
+  av_copy_packet(&qe->d.pkt, pkt);
 }
 
 static void get_packet(mc_queue *q, mc_queue_entry *qe, void *ctx) {
   AVPacket *pkt = (AVPacket *) ctx;
-  if (qe->eof) q->eof = 1;
-  else *pkt = qe->d.pkt;
+  *pkt = qe->d.pkt;
+}
+
+static void put_frame(mc_queue *q, mc_queue_entry *qe, void *ctx) {
+  AVFrame *frame = (AVFrame *) ctx;
+  check_type(q, MC_FRAME);
+  av_frame_ref(&qe->d.frame, frame);
+}
+
+static void get_frame(mc_queue *q, mc_queue_entry *qe, void *ctx) {
+  AVFrame *frame = (AVFrame *) ctx;
+  *frame = qe->d.frame;
 }
 
 static void queue_put(mc_queue *q, put_func pf, void *ctx) {
@@ -88,7 +97,8 @@ static void queue_put(mc_queue *q, put_func pf, void *ctx) {
 
   qe = get_entry(q);
 
-  pf(q, qe, ctx);
+  if (ctx == NULL) qe->eof = 1;
+  else pf(q, qe, ctx);
 
   qe->next = NULL;
   if (q->tail) q->tail->next = qe;
@@ -114,6 +124,14 @@ void mc_queue_multi_packet_put(mc_queue *q, AVPacket *pkt) {
   for (; q; q = q->pnext) mc_queue_packet_put(q, pkt);
 }
 
+void mc_queue_frame_put(mc_queue *q, AVFrame *frame) {
+  queue_put(q, put_frame, frame);
+}
+
+void mc_queue_multi_frame_put(mc_queue *q, AVFrame *frame) {
+  for (; q; q = q->pnext) mc_queue_frame_put(q, frame);
+}
+
 static int queue_get(mc_queue *q, get_func gf, void *ctx) {
   mc_queue_entry *qe;
 
@@ -125,7 +143,8 @@ static int queue_get(mc_queue *q, get_func gf, void *ctx) {
   q->head = qe->next;
   if (q->head == NULL) q->tail = NULL;
 
-  gf(q, qe, ctx);
+  if (qe->eof) q->eof = 1;
+  else gf(q, qe, ctx);
 
   memset(qe, 0, sizeof(*qe)); /* trample cloned pkt ref */
   qe->next = q->free;
@@ -140,6 +159,10 @@ static int queue_get(mc_queue *q, get_func gf, void *ctx) {
 
 int mc_queue_packet_get(mc_queue *q, AVPacket *pkt) {
   return queue_get(q, get_packet, pkt);
+}
+
+int mc_queue_frame_get(mc_queue *q, AVFrame *frame) {
+  return queue_get(q, get_frame, frame);
 }
 
 mc_queue_entry *mc_queue_peek(mc_queue *q) {
@@ -258,6 +281,10 @@ static int merger_get(mc_queue_merger *qm, get_func gf, void *ctx) {
 
 int mc_queue_merger_packet_get(mc_queue_merger *qm, AVPacket *pkt) {
   return merger_get(qm, get_packet, pkt);
+}
+
+int mc_queue_merger_frame_get(mc_queue_merger *qm, AVFrame *frame) {
+  return merger_get(qm, get_frame, frame);
 }
 
 /* vim:ts=2:sw=2:sts=2:et:ft=c
