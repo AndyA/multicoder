@@ -23,10 +23,12 @@ static void *hls_muxer(void *ctx) {
 }
 
 static int dts_compare(AVPacket *a, AVPacket *b, void *ctx) {
+  (void) ctx;
   return a->dts < b->dts ? -1 : a->dts > b->dts ? 1 : 0;
 }
 
 static int pts_compare(AVPacket *a, AVPacket *b, void *ctx) {
+  (void) ctx;
   return a->pts < b->pts ? -1 : a->pts > b->pts ? 1 : 0;
 }
 

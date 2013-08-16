@@ -11,6 +11,7 @@
 
 #include "mc_buffer.h"
 #include "mc_queue.h"
+#include "mc_util.h"
 
 #define MC_ERROR_LEVELS \
   X(ERROR)    \
