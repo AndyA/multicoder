@@ -61,13 +61,6 @@ extern "C" {
   void mc_queue_free(mc_queue *q);
   mc_queue *mc_queue_hook(mc_queue *q, mc_queue *nq);
 
-  void mc_queue_packet_put(mc_queue *q, AVPacket *pkt);
-  void mc_queue_multi_packet_put(mc_queue *q, AVPacket *pkt);
-  int mc_queue_packet_get(mc_queue *q, AVPacket *pkt);
-
-  void mc_queue_frame_put(mc_queue *q, AVFrame *frame);
-  void mc_queue_multi_frame_put(mc_queue *q, AVFrame *frame);
-  int mc_queue_frame_get(mc_queue *q, AVFrame *frame);
 
   mc_queue_entry *mc_queue_peek(mc_queue *q);
 
@@ -76,8 +69,14 @@ extern "C" {
   void mc_queue_merger_empty(mc_queue_merger *qm);
   void mc_queue_merger_free(mc_queue_merger *qm);
 
+  void mc_queue_packet_put(mc_queue *q, AVPacket *pkt);
+  void mc_queue_multi_packet_put(mc_queue *q, AVPacket *pkt);
+  int mc_queue_packet_get(mc_queue *q, AVPacket *pkt);
   int mc_queue_merger_packet_get(mc_queue_merger *qm, AVPacket *pkt);
 
+  void mc_queue_frame_put(mc_queue *q, AVFrame *frame);
+  void mc_queue_multi_frame_put(mc_queue *q, AVFrame *frame);
+  int mc_queue_frame_get(mc_queue *q, AVFrame *frame);
   int mc_queue_merger_frame_get(mc_queue_merger *qm, AVFrame *frame);
 
 #ifdef __cplusplus

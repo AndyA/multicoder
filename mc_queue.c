@@ -62,28 +62,6 @@ static void check_type(mc_queue *q, mc_queue_type t) {
     jd_throw("Unexpected %s call on %s queue", t_name[t], t_name[q->t]);
 }
 
-static void put_packet(mc_queue *q, mc_queue_entry *qe, void *ctx) {
-  AVPacket *pkt = (AVPacket *) ctx;
-  check_type(q, MC_PACKET);
-  av_copy_packet(&qe->d.pkt, pkt);
-}
-
-static void get_packet(mc_queue *q, mc_queue_entry *qe, void *ctx) {
-  AVPacket *pkt = (AVPacket *) ctx;
-  *pkt = qe->d.pkt;
-}
-
-static void put_frame(mc_queue *q, mc_queue_entry *qe, void *ctx) {
-  AVFrame *frame = (AVFrame *) ctx;
-  check_type(q, MC_FRAME);
-  av_frame_ref(&qe->d.frame, frame);
-}
-
-static void get_frame(mc_queue *q, mc_queue_entry *qe, void *ctx) {
-  AVFrame *frame = (AVFrame *) ctx;
-  *frame = qe->d.frame;
-}
-
 static void queue_put(mc_queue *q, put_func pf, void *ctx) {
   mc_queue_entry *qe;
 
@@ -116,20 +94,8 @@ static void queue_put(mc_queue *q, put_func pf, void *ctx) {
   }
 }
 
-void mc_queue_packet_put(mc_queue *q, AVPacket *pkt) {
-  queue_put(q, put_packet, pkt);
-}
-
-void mc_queue_multi_packet_put(mc_queue *q, AVPacket *pkt) {
-  for (; q; q = q->pnext) mc_queue_packet_put(q, pkt);
-}
-
-void mc_queue_frame_put(mc_queue *q, AVFrame *frame) {
-  queue_put(q, put_frame, frame);
-}
-
-void mc_queue_multi_frame_put(mc_queue *q, AVFrame *frame) {
-  for (; q; q = q->pnext) mc_queue_frame_put(q, frame);
+static void queue_multi_put(mc_queue *q, put_func pf, void *ctx) {
+  for (; q; q = q->pnext) queue_put(q, pf, ctx);
 }
 
 static int queue_get(mc_queue *q, get_func gf, void *ctx) {
@@ -155,14 +121,6 @@ static int queue_get(mc_queue *q, get_func gf, void *ctx) {
   pthread_mutex_unlock(&q->mutex);
 
   return !q->eof;
-}
-
-int mc_queue_packet_get(mc_queue *q, AVPacket *pkt) {
-  return queue_get(q, get_packet, pkt);
-}
-
-int mc_queue_frame_get(mc_queue *q, AVFrame *frame) {
-  return queue_get(q, get_frame, frame);
 }
 
 mc_queue_entry *mc_queue_peek(mc_queue *q) {
@@ -279,8 +237,67 @@ static int merger_get(mc_queue_merger *qm, get_func gf, void *ctx) {
   return more;
 }
 
+/****************************************************
+ *                                                  *
+ * Packet wrapper                                   *
+ *                                                  *
+ ****************************************************/
+
+static void put_packet(mc_queue *q, mc_queue_entry *qe, void *ctx) {
+  AVPacket *pkt = (AVPacket *) ctx;
+  check_type(q, MC_PACKET);
+  av_copy_packet(&qe->d.pkt, pkt);
+}
+
+static void get_packet(mc_queue *q, mc_queue_entry *qe, void *ctx) {
+  AVPacket *pkt = (AVPacket *) ctx;
+  *pkt = qe->d.pkt;
+}
+
+
+void mc_queue_packet_put(mc_queue *q, AVPacket *pkt) {
+  queue_put(q, put_packet, pkt);
+}
+
+void mc_queue_multi_packet_put(mc_queue *q, AVPacket *pkt) {
+  queue_multi_put(q, put_packet, pkt);
+}
+
+int mc_queue_packet_get(mc_queue *q, AVPacket *pkt) {
+  return queue_get(q, get_packet, pkt);
+}
+
 int mc_queue_merger_packet_get(mc_queue_merger *qm, AVPacket *pkt) {
   return merger_get(qm, get_packet, pkt);
+}
+
+/****************************************************
+ *                                                  *
+ * Frame wrapper                                    *
+ *                                                  *
+ ****************************************************/
+
+static void put_frame(mc_queue *q, mc_queue_entry *qe, void *ctx) {
+  AVFrame *frame = (AVFrame *) ctx;
+  check_type(q, MC_FRAME);
+  av_frame_ref(&qe->d.frame, frame);
+}
+
+static void get_frame(mc_queue *q, mc_queue_entry *qe, void *ctx) {
+  AVFrame *frame = (AVFrame *) ctx;
+  *frame = qe->d.frame;
+}
+
+void mc_queue_frame_put(mc_queue *q, AVFrame *frame) {
+  queue_put(q, put_frame, frame);
+}
+
+void mc_queue_multi_frame_put(mc_queue *q, AVFrame *frame) {
+  queue_multi_put(q, put_frame, frame);
+}
+
+int mc_queue_frame_get(mc_queue *q, AVFrame *frame) {
+  return queue_get(q, get_frame, frame);
 }
 
 int mc_queue_merger_frame_get(mc_queue_merger *qm, AVFrame *frame) {
