@@ -140,11 +140,12 @@ size_t mc_buffer_wait_input(mc_buffer *b, mc_buffer_iov *bi) {
 
 size_t mc_buffer_send_input(mc_buffer *b, const void *base, size_t len) {
   const unsigned char *bp = base;
+  size_t olen = len;
   while (len > 0) {
     mc_buffer_iov iov;
     size_t done = 0;
     mc_buffer_wait_input(b, &iov);
-    for (unsigned i = 0; i < iov.iovcnt; i++) {
+    for (int i = 0; i < iov.iovcnt; i++) {
       size_t avail = iov.iov[i].iov_len;
       if (avail > len) avail = len;
       memcpy(iov.iov[i].iov_base, bp, avail);
@@ -154,6 +155,7 @@ size_t mc_buffer_send_input(mc_buffer *b, const void *base, size_t len) {
     }
     mc_buffer_commit_input(b, done);
   }
+  return olen;
 }
 
 size_t mc_buffer_wait_output(mc_buffer_reader *br, mc_buffer_iov *bi) {
