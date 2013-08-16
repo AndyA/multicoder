@@ -170,11 +170,19 @@ static mc_queue *rotate(mc_queue *lq) {
   return fq;
 }
 
+static int better_ent(mc_queue_merger *qm, mc_queue_entry *a, mc_queue_entry *b) {
+  if (a == NULL) return 1;
+  if (b == NULL) return 0;
+  if (a->eof) return 0;
+  if (b->eof) return 1;
+  return qm->qc(&a->pkt, &b->pkt, qm->ctx) > 0;
+}
+
 int mc_queue_merger_get_nb(mc_queue_merger *qm, AVPacket *pkt, int *got) {
   unsigned nready = 0, nfull = 0, neof = 0, nqueue = 0;
 
   mc_queue *nq, *bq = NULL;
-  AVPacket *bp = NULL;
+  mc_queue_entry *be = NULL;
 
   *got = 0;
 
@@ -185,22 +193,23 @@ int mc_queue_merger_get_nb(mc_queue_merger *qm, AVPacket *pkt, int *got) {
     pthread_mutex_lock(&nq->mutex);
     if (nq->used == nq->max_size) nfull++;
     if (nq->eof) neof++;
-    AVPacket *np = nq->head ? &nq->head->pkt : NULL;
-    if (np) nready++;
+    mc_queue_entry *ne = nq->head;
+    if (ne) nready++;
     nqueue++;
     pthread_mutex_unlock(&nq->mutex);
 
-    if (bq == NULL) {
+    if (!bq || better_ent(qm, be, ne)) {
       bq = nq;
-      bp = np;
-    }
-    else if (bp == NULL || (np && qm->qc(bp, np, qm->ctx) > 0)) {
-      bp = np;
-      bq = nq;
+      be = ne;
     }
   }
 
-  if (bp && (nfull || nready + neof == nqueue))
+  /* read from the best queue if all the queues were
+   * either ready or at eof or if at least one of the
+   * queues is full.
+   */
+
+  if (be && (nfull || nready + neof == nqueue))
     *got = mc_queue_get(bq, pkt);
   else if (neof == nqueue)
     *got = 1;

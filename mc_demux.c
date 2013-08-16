@@ -30,6 +30,7 @@ void mc_demux(AVFormatContext *fcx, mc_queue *aq, mc_queue *vq) {
       mc_queue_put(aq, &pkt);
     else if (pkt.stream_index == vid)
       mc_queue_put(vq, &pkt);
+
     av_free_packet(&pkt);
   }
 }
