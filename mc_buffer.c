@@ -3,18 +3,12 @@
 #include <string.h>
 
 #include "mc_buffer.h"
-
-static void *alloc(size_t sz) {
-  void *m = malloc(sz);
-  if (!m) abort();
-  memset(m, 0, sz);
-  return m;
-}
+#include "mc_util.h"
 
 mc_buffer *mc_buffer_new(size_t sz) {
-  mc_buffer *b = alloc(sizeof(mc_buffer));
+  mc_buffer *b = mc_alloc(sizeof(mc_buffer));
   b->size = sz + 1; // +1 byte because we don't want to ever be full
-  b->b = alloc(b->size);
+  b->b = mc_alloc(b->size);
   pthread_mutex_init(&b->mutex, NULL);
   pthread_cond_init(&b->can_read, NULL);
   pthread_cond_init(&b->can_write, NULL);
@@ -34,7 +28,7 @@ void mc_buffer_free(mc_buffer *b) {
 }
 
 mc_buffer_reader *mc_buffer_add_reader(mc_buffer *b) {
-  mc_buffer_reader *br = alloc(sizeof(mc_buffer_reader));
+  mc_buffer_reader *br = mc_alloc(sizeof(mc_buffer_reader));
   br->b = b;
   br->next = b->br;
   b->br = br;

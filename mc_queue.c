@@ -4,16 +4,10 @@
 #include <pthread.h>
 
 #include "mc_queue.h"
-
-static void *alloc(size_t sz) {
-  void *m = malloc(sz);
-  if (!m) abort();
-  memset(m, 0, sz);
-  return m;
-}
+#include "mc_util.h"
 
 mc_queue *mc_queue_new(size_t size) {
-  mc_queue *q = alloc(sizeof(*q));
+  mc_queue *q = mc_alloc(sizeof(*q));
   q->max_size = size;
   q->used = 0;
   pthread_mutex_init(&q->mutex, NULL);
@@ -52,7 +46,7 @@ static mc_queue_entry *get_entry(mc_queue *q) {
     return ent;
   }
 
-  return alloc(sizeof(mc_queue_entry));
+  return mc_alloc(sizeof(mc_queue_entry));
 }
 
 void mc_queue_put(mc_queue *q, AVPacket *pkt) {
@@ -130,7 +124,7 @@ AVPacket *mc_queue_peek(mc_queue *q) {
 }
 
 mc_queue_merger *mc_queue_merger_new(mc_queue_comparator qc, void *ctx) {
-  mc_queue_merger *qm = alloc(sizeof(*qm));
+  mc_queue_merger *qm = mc_alloc(sizeof(*qm));
   qm->qc = qc;
   qm->ctx = ctx;
   pthread_mutex_init(&qm->mutex, NULL);
