@@ -16,21 +16,14 @@
 
 #define INBUF_SIZE 4096
 
-static void send_frame(mc_buffer *out, const uint8_t *buf,
-                       unsigned wrap, unsigned xsize, unsigned ysize) {
-  mc_debug("Send frame [%u x %u]", xsize, ysize);
-  for (unsigned y = 0; y < ysize; y++)
-    mc_buffer_send_input(out, buf + y * wrap, xsize);
-}
-
-static unsigned decode_and_send(mc_buffer *out,
-                                AVCodecContext *avctx,
-                                AVFrame *frame,
-                                AVPacket *pkt) {
+static unsigned transcode(mc_queue *qo,
+                          AVCodecContext *avctx,
+                          AVFrame *frame,
+                          AVPacket *pkt) {
 
   int len, got_frame;
 
-  mc_debug("decode_and_send(%p, %u)", pkt->data, (unsigned) pkt->size);
+  mc_debug("transcode(%p, %u)", pkt->data, (unsigned) pkt->size);
 
   len = avcodec_decode_video2(avctx, frame, &got_frame, pkt);
   if (len < 0) {
@@ -38,9 +31,11 @@ static unsigned decode_and_send(mc_buffer *out,
     mc_error("Decode error");
   }
 
+#if 0
   if (got_frame)
     send_frame(out, frame->data[0], frame->linesize[0],
                avctx->width, avctx->height);
+#endif
 
   if (pkt->data) {
     pkt->size -= len;
@@ -50,7 +45,7 @@ static unsigned decode_and_send(mc_buffer *out,
   return got_frame ? 1 : 0;
 }
 
-void mc_h264_decoder(mc_buffer_reader *in, mc_buffer *out) {
+void mc_h264(jd_var *cfg, mc_queue *qi, mc_queue *qo) {
   AVCodec *codec;
   AVCodecContext *c;
   AVFrame *frame;
@@ -59,7 +54,6 @@ void mc_h264_decoder(mc_buffer_reader *in, mc_buffer *out) {
 
   av_init_packet(&avpkt);
 
-  /*  codec = avcodec_find_decoder_by_name("libx264");*/
   codec = avcodec_find_decoder(AV_CODEC_ID_H264);
   if (!codec) jd_throw("Codec not found");
 
@@ -80,21 +74,13 @@ void mc_h264_decoder(mc_buffer_reader *in, mc_buffer *out) {
   frame = avcodec_alloc_frame();
   if (!frame) jd_throw("Can't allocate frame");
 
-  for (;;) {
-    size_t got = mc_buffer_wait_output(in, &iiov);
-    if (got == 0) break;
-    for (int i = 0; i < iiov.iovcnt; i++) {
-      avpkt.size = iiov.iov[i].iov_len;
-      avpkt.data = iiov.iov[i].iov_base;
-      while (avpkt.size > 0)
-        decode_and_send(out, c, frame, &avpkt);
-    }
-    mc_buffer_commit_output(in, got);
+  while (mc_queue_get(qi, &avpkt)) {
+    transcode(qo, c, frame, &avpkt);
   }
 
   avpkt.data = NULL;
   avpkt.size = 0;
-  decode_and_send(out, c, frame, &avpkt);
+  transcode(qo, c, frame, &avpkt);
 
   avcodec_close(c);
   av_free(c);

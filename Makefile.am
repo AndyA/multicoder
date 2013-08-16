@@ -20,7 +20,7 @@ libmulticoder_la_SOURCES = \
 	mc_buffer.c \
 	mc_buffer.h \
 	mc_demux.c \
-	mc_h264_decoder.c \
+	mc_h264.c \
 	mc_log.c \
 	mc_mux_hls.c \
 	mc_queue.c \
