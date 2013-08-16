@@ -28,6 +28,7 @@ extern "C" {
   int mc_segname_parse(mc_segname *sn, const char *name);
   int mc_segname_inc(mc_segname *sn);
   char *mc_segname_format(mc_segname *sn);
+  char *mc_segname_next(mc_segname *sn);
 
 #ifdef __cplusplus
 }

@@ -3,6 +3,7 @@
 /*.o
 /basic
 /core
+/model
 /queue
 /segname
 /sequence

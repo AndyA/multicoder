@@ -1,0 +1,6 @@
+{
+   "general" : {
+      "log" : "debug",
+      "work" : "tmp"
+   }
+}

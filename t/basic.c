@@ -7,6 +7,7 @@
 
 void test_main(void) {
   scope {
+    pass("OK!");
   }
 }
 

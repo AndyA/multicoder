@@ -117,6 +117,11 @@ char *mc_segname_format(mc_segname *sn) {
   return buf;
 }
 
+char *mc_segname_next(mc_segname *sn) {
+  char *next = mc_segname_format(sn);
+  mc_segname_inc(sn);
+  return next;
+}
 
 /* vim:ts=2:sw=2:sts=2:et:ft=c
  */

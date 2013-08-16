@@ -24,13 +24,14 @@ char *mc_random_chars(char *s, size_t len) {
 
 char *mc_tmp_name(const char *filename) {
   size_t len = strlen(filename);
-  char *tmp = mc_alloc(len + TMP_PREFIX_LEN + 1);
+  char *tmp = mc_alloc(len + TMP_PREFIX_LEN + 2);
   const char *slash = strrchr(filename, '/');
   if (slash) slash++;
   else slash = filename;
   memcpy(tmp, filename, slash - filename);
   mc_random_chars(tmp + (slash - filename), TMP_PREFIX_LEN);
-  memcpy(tmp + (slash - filename) + TMP_PREFIX_LEN, slash, len + filename - slash + 1);
+  tmp[(slash - filename) + TMP_PREFIX_LEN] = '.';
+  memcpy(tmp + (slash - filename) + TMP_PREFIX_LEN + 1, slash, len + filename - slash + 1);
   return tmp;
 }
 

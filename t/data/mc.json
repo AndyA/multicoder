@@ -1,4 +1,7 @@
 {
+   "general" : {
+      "work" : "temp"
+   },
    "tasks" : [
       {
          "name" : "a",
@@ -12,7 +15,7 @@
                "name" : "sd",
                "output" : {
                   "playlist" : "sd.m3u8",
-                  "segment" : "sd/%08d/%04d.ts"
+                  "segment" : "sd/%6a/%6a.ts"
                },
                "video" : {
                   "bit_rate" : 800000,
@@ -29,7 +32,7 @@
                "name" : "hd",
                "output" : {
                   "playlist" : "hd.m3u8",
-                  "segment" : "hd/%08d/%04d.ts"
+                  "segment" : "hd/%08d.ts"
                },
                "video" : {
                   "type" : "direct"
@@ -42,7 +45,7 @@
                "name" : "mobile",
                "output" : {
                   "playlist" : "mobile.m3u8",
-                  "segment" : "mobile/%08d/%04d.ts"
+                  "segment" : "mobile/%08d.ts"
                },
                "video" : {
                   "bit_rate" : 380000,
