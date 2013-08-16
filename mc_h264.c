@@ -16,30 +16,24 @@
 
 #define INBUF_SIZE 4096
 
-static unsigned transcode(mc_queue *qo,
-                          AVCodecContext *avctx,
-                          AVFrame *frame,
-                          AVPacket *pkt) {
+static unsigned decode(mc_queue *q,
+                       AVCodecContext *avctx,
+                       AVFrame *frame,
+                       AVPacket *pkt) {
 
   int len, got_frame;
 
-  (void) qo;
-
-  mc_debug("transcode(%p, %u)", pkt->data, (unsigned) pkt->size);
+  mc_debug("decode(%p, %u)", pkt->data, (unsigned) pkt->size);
 
   len = avcodec_decode_video2(avctx, frame, &got_frame, pkt);
-  if (len < 0) {
-    /*    jd_throw("Decode error");*/
-    mc_error("Decode error");
+  if (len < 0) mc_error("Decode error");
+
+  if (got_frame) {
+    mc_queue_frame_put(q, frame);
+    av_frame_unref(frame);
   }
 
-#if 0
-  if (got_frame)
-    send_frame(out, frame->data[0], frame->linesize[0],
-               avctx->width, avctx->height);
-#endif
-
-  if (pkt->data) {
+  if (pkt->data && len > 0) {
     pkt->size -= len;
     pkt->data += len;
   }
@@ -47,7 +41,7 @@ static unsigned transcode(mc_queue *qo,
   return got_frame ? 1 : 0;
 }
 
-void mc_h264(jd_var *cfg, mc_queue *qi, mc_queue *qo) {
+void mc_h264_decode(jd_var *cfg, mc_queue *qi, mc_queue *qo) {
   AVCodec *codec;
   AVCodecContext *c;
   AVFrame *frame;
@@ -67,6 +61,8 @@ void mc_h264(jd_var *cfg, mc_queue *qi, mc_queue *qo) {
   if (codec->capabilities & CODEC_CAP_TRUNCATED)
     c->flags |= CODEC_FLAG_TRUNCATED; /* we do not send complete frames */
 
+  c->refcounted_frames = 1;
+
   /* For some codecs, such as msmpeg4 and mpeg4, width and height
      MUST be initialized there because this information is not
      available in the bitstream. */
@@ -78,13 +74,14 @@ void mc_h264(jd_var *cfg, mc_queue *qi, mc_queue *qo) {
   frame = avcodec_alloc_frame();
   if (!frame) jd_throw("Can't allocate frame");
 
-  while (mc_queue_packet_get(qi, &avpkt)) {
-    transcode(qo, c, frame, &avpkt);
-  }
+  while (mc_queue_packet_get(qi, &avpkt))
+    decode(qo, c, frame, &avpkt);
 
   avpkt.data = NULL;
   avpkt.size = 0;
-  transcode(qo, c, frame, &avpkt);
+  decode(qo, c, frame, &avpkt);
+
+  mc_queue_frame_put(qo, NULL);
 
   avcodec_close(c);
   av_free(c);

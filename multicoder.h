@@ -39,7 +39,7 @@ void mc_warning(const char *msg, ...);
 void mc_error(const char *msg, ...);
 void mc_fatal(const char *msg, ...);
 
-void mc_h264(jd_var *cfg, mc_queue *qi, mc_queue *qo);
+void mc_h264_decode(jd_var *cfg, mc_queue *qi, mc_queue *qo);
 void mc_demux(AVFormatContext *fcx, mc_queue *aq, mc_queue *vq);
 void mc_mux_hls(jd_var *cfg, mc_queue_merger *qm);
 
