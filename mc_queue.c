@@ -83,13 +83,13 @@ void mc_queue_put(mc_queue *q, AVPacket *pkt) {
 
   pthread_cond_broadcast(&q->can_get);
 
+  pthread_mutex_unlock(&q->mutex);
+
   if (q->can_get_multi) {
     pthread_mutex_lock(q->mutex_multi);
     pthread_cond_signal(q->can_get_multi);
     pthread_mutex_unlock(q->mutex_multi);
   }
-
-  pthread_mutex_unlock(&q->mutex);
 }
 
 void mc_queue_multi_put(mc_queue *q, AVPacket *pkt) {
