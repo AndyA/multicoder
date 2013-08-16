@@ -5,7 +5,7 @@
 
 #include "mc_util.h"
 
-#define TMP_PREFIX_LEN 32
+#define TMP_PREFIX_LEN 10 
 
 void *mc_alloc(size_t sz) {
   void *m = malloc(sz);
