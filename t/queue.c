@@ -28,7 +28,7 @@ static void test_non_full(void) {
       diag("q->used = %d", q->used);
 
     int count = 0;
-    while (mc_queue_packet_peek(q)) {
+    while (mc_queue_peek(q)) {
       mc_queue_packet_get(q, &pkt);
       count++;
     }

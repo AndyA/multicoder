@@ -25,7 +25,7 @@ mc_queue *mc_queue_hook(mc_queue *q, mc_queue *nq) {
 static void free_entries(mc_queue_entry *qe) {
   for (mc_queue_entry *next = qe; next; qe = next) {
     next = qe->next;
-    av_free_packet(&qe->pkt);
+    av_free_packet(&qe->d.pkt);
     free(qe);
   }
 }
@@ -49,7 +49,33 @@ static mc_queue_entry *get_entry(mc_queue *q) {
   return mc_alloc(sizeof(mc_queue_entry));
 }
 
-void mc_queue_packet_put(mc_queue *q, AVPacket *pkt) {
+typedef void (*put_func)(mc_queue *q, mc_queue_entry *qe, void *ctx);
+typedef void (*get_func)(mc_queue *q, mc_queue_entry *qe, void *ctx);
+
+static void put_packet(mc_queue *q, mc_queue_entry *qe, void *ctx) {
+  AVPacket *pkt = (AVPacket *) ctx;
+
+  if (q->t == MC_UNKNOWN)
+    q->t = MC_PACKET;
+  else if (q->t != MC_PACKET)
+    jd_throw("Unexpected packet in queue");
+
+  if (pkt) {
+    av_copy_packet(&qe->d.pkt, pkt);
+    qe->eof = 0;
+  }
+  else {
+    qe->eof = 1;
+  }
+}
+
+static void get_packet(mc_queue *q, mc_queue_entry *qe, void *ctx) {
+  AVPacket *pkt = (AVPacket *) ctx;
+  if (qe->eof) q->eof = 1;
+  else *pkt = qe->d.pkt;
+}
+
+static void queue_put(mc_queue *q, put_func pf, void *ctx) {
   mc_queue_entry *qe;
 
   if (q->m)
@@ -62,13 +88,7 @@ void mc_queue_packet_put(mc_queue *q, AVPacket *pkt) {
 
   qe = get_entry(q);
 
-  if (pkt) {
-    av_copy_packet(&qe->pkt, pkt);
-    qe->eof = 0;
-  }
-  else {
-    qe->eof = 1;
-  }
+  pf(q, qe, ctx);
 
   qe->next = NULL;
   if (q->tail) q->tail->next = qe;
@@ -86,11 +106,15 @@ void mc_queue_packet_put(mc_queue *q, AVPacket *pkt) {
   }
 }
 
+void mc_queue_packet_put(mc_queue *q, AVPacket *pkt) {
+  queue_put(q, put_packet, pkt);
+}
+
 void mc_queue_multi_packet_put(mc_queue *q, AVPacket *pkt) {
   for (; q; q = q->pnext) mc_queue_packet_put(q, pkt);
 }
 
-int mc_queue_packet_get(mc_queue *q, AVPacket *pkt) {
+static int queue_get(mc_queue *q, get_func gf, void *ctx) {
   mc_queue_entry *qe;
 
   pthread_mutex_lock(&q->mutex);
@@ -101,8 +125,7 @@ int mc_queue_packet_get(mc_queue *q, AVPacket *pkt) {
   q->head = qe->next;
   if (q->head == NULL) q->tail = NULL;
 
-  if (qe->eof) q->eof = 1;
-  else *pkt = qe->pkt;
+  gf(q, qe, ctx);
 
   memset(qe, 0, sizeof(*qe)); /* trample cloned pkt ref */
   qe->next = q->free;
@@ -115,12 +138,16 @@ int mc_queue_packet_get(mc_queue *q, AVPacket *pkt) {
   return !q->eof;
 }
 
-AVPacket *mc_queue_packet_peek(mc_queue *q) {
+int mc_queue_packet_get(mc_queue *q, AVPacket *pkt) {
+  return queue_get(q, get_packet, pkt);
+}
+
+mc_queue_entry *mc_queue_peek(mc_queue *q) {
   /* probably don't need the lock here */
   pthread_mutex_lock(&q->mutex);
   mc_queue_entry *head = q->head;
   pthread_mutex_unlock(&q->mutex);
-  return head ? &head->pkt : NULL;
+  return head;
 }
 
 mc_queue_merger *mc_queue_merger_new(mc_queue_packet_comparator qc, void *ctx) {
@@ -169,10 +196,10 @@ static int better_ent(mc_queue_merger *qm, mc_queue_entry *a, mc_queue_entry *b)
   if (b == NULL) return 0;
   if (a->eof) return 0;
   if (b->eof) return 1;
-  return qm->qc(&a->pkt, &b->pkt, qm->ctx) > 0;
+  return qm->qc(&a->d.pkt, &b->d.pkt, qm->ctx) > 0;
 }
 
-int mc_queue_merger_packet_get_nb(mc_queue_merger *qm, AVPacket *pkt, int *got) {
+static int merger_get_nb(mc_queue_merger *qm, get_func gf, void *ctx, int *got) {
   unsigned nready = 0, nfull = 0, neof = 0, nqueue = 0;
 
   mc_queue *nq, *bq = NULL;
@@ -204,22 +231,22 @@ int mc_queue_merger_packet_get_nb(mc_queue_merger *qm, AVPacket *pkt, int *got) 
    */
 
   if (be && (nfull || nready + neof == nqueue))
-    *got = mc_queue_packet_get(bq, pkt);
+    *got = queue_get(bq, gf, ctx);
   else if (neof == nqueue)
     *got = 1;
 
   return neof < nqueue;
 }
 
-int mc_queue_merger_packet_get(mc_queue_merger *qm, AVPacket *pkt) {
+static int merger_get(mc_queue_merger *qm, get_func gf, void *ctx) {
   int got = 0;
-  int more = mc_queue_merger_packet_get_nb(qm, pkt, &got);
+  int more = merger_get_nb(qm, gf, ctx, &got);
   if (got) return more;
 
   pthread_mutex_lock(&qm->mutex);
 
   for (;;) {
-    more = mc_queue_merger_packet_get_nb(qm, pkt, &got);
+    more = merger_get_nb(qm, gf, ctx, &got);
     if (got) break;
     pthread_cond_wait(&qm->can_get, &qm->mutex);
   }
@@ -227,6 +254,10 @@ int mc_queue_merger_packet_get(mc_queue_merger *qm, AVPacket *pkt) {
   pthread_mutex_unlock(&qm->mutex);
 
   return more;
+}
+
+int mc_queue_merger_packet_get(mc_queue_merger *qm, AVPacket *pkt) {
+  return merger_get(qm, get_packet, pkt);
 }
 
 /* vim:ts=2:sw=2:sts=2:et:ft=c
