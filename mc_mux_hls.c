@@ -18,17 +18,24 @@ typedef struct {
   AVFormatContext *oc;
 } output_context;
 
+#if 0
+
 static void close_output(output_context *oc) {
+  (void) oc;
 }
 
 static void open_output(jd_var *cfg, output_context *oc, uint64_t seg) {
+  (void) cfg;
+  (void) seg;
   if (oc->oc) close_output(oc);
 
 }
 
+#endif
+
 void mc_mux_hls(jd_var *cfg, mc_queue_merger *qm) {
   AVPacket pkt;
-  AVFormatContext *oc;
+/*  AVFormatContext *oc;*/
 
   (void) cfg;
 
@@ -46,7 +53,7 @@ void mc_mux_hls(jd_var *cfg, mc_queue_merger *qm) {
   }
 
   mc_debug("HLS EOF");
-  avformat_free_context(oc);
+/*  avformat_free_context(oc);*/
 }
 
 /* vim:ts=2:sw=2:sts=2:et:ft=c

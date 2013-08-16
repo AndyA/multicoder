@@ -18,9 +18,6 @@ extern "C" {
     uint8_t *count;
   } mc_sequence;
 
-  extern const char *mc_sequence_sym_num;
-  extern const char *mc_sequence_sym_alnum;
-
   mc_sequence *mc_sequence_new(const char *fmt);
   void mc_sequence_free(mc_sequence *s);
   int mc_sequence_inc(mc_sequence *s);

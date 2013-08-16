@@ -8,10 +8,10 @@
 #include "mc_sequence.h"
 #include "mc_util.h"
 
-const char *mc_sequence_sym_num =
+static const char *mc_sequence_sym_num =
   "0123456789";
 
-const char *mc_sequence_sym_alnum =
+static const char *mc_sequence_sym_alnum =
   "abcdefghijklmnopqrstuvwxyz"
   "0123456789";
 

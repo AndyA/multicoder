@@ -46,7 +46,6 @@ void mc_h264_decode(jd_var *cfg, mc_queue *qi, mc_queue *qo) {
   AVCodecContext *c;
   AVFrame *frame;
   AVPacket avpkt;
-  mc_buffer_iov iiov;
 
   (void) cfg;
 
