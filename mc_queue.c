@@ -163,15 +163,17 @@ int mc_queue_merger_get_nb(mc_queue_merger *qm, AVPacket *pkt, int *got) {
   *got = 0;
 
   for (nq = qm->head; nq; nq = nq->mnext) {
+    mc_queue_entry *head;
 
     pthread_mutex_lock(&nq->mutex);
     if (nq->used == nq->max_size) nfull++;
-    if (nq->used) nready++;
     if (nq->eof) neof++;
+    head = nq->head;
     pthread_mutex_unlock(&nq->mutex);
     nqueue++;
+    AVPacket *np = head ? &head->pkt : NULL;
 
-    AVPacket *np = mc_queue_peek(nq);
+    if (np) nready++;
 
     if (bq == NULL) {
       bq = nq;
