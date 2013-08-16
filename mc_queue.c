@@ -23,8 +23,8 @@ mc_queue *mc_queue_new(size_t size) {
 }
 
 mc_queue *mc_queue_hook(mc_queue *q, mc_queue *nq) {
-  nq->next = q->next;
-  q->next = nq;
+  nq->pnext = q->pnext;
+  q->pnext = nq;
   return q;
 }
 
@@ -37,10 +37,10 @@ static void free_entries(mc_queue_entry *qe) {
 }
 
 void mc_queue_free(mc_queue *q) {
-  for (mc_queue *next = q; next; q = next) {
+  for (mc_queue *pnext = q; pnext; q = pnext) {
     free_entries(q->head);
     free_entries(q->free);
-    next = q->next;
+    pnext = q->pnext;
     free(q);
   }
 }
@@ -93,7 +93,7 @@ void mc_queue_put(mc_queue *q, AVPacket *pkt) {
 }
 
 void mc_queue_multi_put(mc_queue *q, AVPacket *pkt) {
-  for (; q; q = q->next) mc_queue_put(q, pkt);
+  for (; q; q = q->pnext) mc_queue_put(q, pkt);
 }
 
 int mc_queue_get(mc_queue *q, AVPacket *pkt) {
@@ -154,6 +154,22 @@ void mc_queue_merger_free(mc_queue_merger *qm) {
   free(qm);
 }
 
+static mc_queue *rotate(mc_queue *lq) {
+  if (!lq) return NULL;
+
+  mc_queue *fq, *nq;
+  fq = nq = lq->mnext;
+
+  if (!nq) return lq;
+
+  while (nq->mnext) nq = nq->mnext;
+
+  nq->mnext = lq;
+  lq->mnext = NULL;
+
+  return fq;
+}
+
 int mc_queue_merger_get_nb(mc_queue_merger *qm, AVPacket *pkt, int *got) {
   unsigned nready = 0, nfull = 0, neof = 0, nqueue = 0;
 
@@ -162,18 +178,17 @@ int mc_queue_merger_get_nb(mc_queue_merger *qm, AVPacket *pkt, int *got) {
 
   *got = 0;
 
+  qm->head = rotate(qm->head);
+
   for (nq = qm->head; nq; nq = nq->mnext) {
-    mc_queue_entry *head;
 
     pthread_mutex_lock(&nq->mutex);
     if (nq->used == nq->max_size) nfull++;
     if (nq->eof) neof++;
-    head = nq->head;
-    pthread_mutex_unlock(&nq->mutex);
-    nqueue++;
-    AVPacket *np = head ? &head->pkt : NULL;
-
+    AVPacket *np = nq->head ? &nq->head->pkt : NULL;
     if (np) nready++;
+    nqueue++;
+    pthread_mutex_unlock(&nq->mutex);
 
     if (bq == NULL) {
       bq = nq;

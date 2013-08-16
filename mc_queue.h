@@ -21,7 +21,7 @@ extern "C" {
   typedef struct mc_queue_merger mc_queue_merger;
 
   typedef struct mc_queue {
-    struct mc_queue *next, *mnext;
+    struct mc_queue *pnext, *mnext;
 
     size_t used;
     size_t max_size;
