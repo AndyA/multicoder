@@ -17,7 +17,7 @@ void *mc_alloc(size_t sz) {
 char *mc_random_chars(char *s, size_t len) {
   for (unsigned i = 0; i < len;) {
     int cc  = rand() & 0x3f;
-    if (cc < 26 + 10) s[i++] = cc < 26 ? 'A' + cc : '0' + cc - 26;
+    if (cc < 26 + 10) s[i++] = cc < 26 ? 'a' + cc : '0' + cc - 26;
   }
   return s;
 }
