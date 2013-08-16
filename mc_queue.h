@@ -27,7 +27,8 @@ extern "C" {
     int eof;
   } mc_queue_entry;
 
-  typedef int (*mc_queue_packet_comparator)(AVPacket *a, AVPacket *b, void *ctx);
+  typedef int (*mc_queue_packet_comparator)(
+    mc_queue_entry *a, mc_queue_entry *b, void *ctx);
 
   typedef struct mc_queue_merger mc_queue_merger;
 

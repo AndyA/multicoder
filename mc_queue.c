@@ -177,7 +177,7 @@ static int better_ent(mc_queue_merger *qm, mc_queue_entry *a, mc_queue_entry *b)
   if (b == NULL) return 0;
   if (a->eof) return 0;
   if (b->eof) return 1;
-  return qm->qc(&a->d.pkt, &b->d.pkt, qm->ctx) > 0;
+  return qm->qc(a, b, qm->ctx) > 0;
 }
 
 static int merger_get_nb(mc_queue_merger *qm, get_func gf, void *ctx, int *got) {
@@ -251,6 +251,7 @@ static void put_packet(mc_queue *q, mc_queue_entry *qe, void *ctx) {
 
 static void get_packet(mc_queue *q, mc_queue_entry *qe, void *ctx) {
   AVPacket *pkt = (AVPacket *) ctx;
+  check_type(q, MC_PACKET);
   *pkt = qe->d.pkt;
 }
 
@@ -285,6 +286,7 @@ static void put_frame(mc_queue *q, mc_queue_entry *qe, void *ctx) {
 
 static void get_frame(mc_queue *q, mc_queue_entry *qe, void *ctx) {
   AVFrame *frame = (AVFrame *) ctx;
+  check_type(q, MC_FRAME);
   *frame = qe->d.frame;
 }
 

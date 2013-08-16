@@ -22,9 +22,9 @@ static void *hls_muxer(void *ctx) {
   return NULL;
 }
 
-static int dts_compare(AVPacket *a, AVPacket *b, void *ctx) {
+static int dts_compare(mc_queue_entry *a, mc_queue_entry *b, void *ctx) {
   (void) ctx;
-  return a->dts < b->dts ? -1 : a->dts > b->dts ? 1 : 0;
+  return a->d.pkt.dts < b->d.pkt.dts ? -1 : a->d.pkt.dts > b->d.pkt.dts ? 1 : 0;
 }
 
 int main(int argc, char *argv[]) {
