@@ -65,9 +65,6 @@ static void check_type(mc_queue *q, mc_queue_type t) {
 static void queue_put(mc_queue *q, put_func pf, void *ctx) {
   mc_queue_entry *qe;
 
-  if (q->m)
-    pthread_mutex_lock(&q->m->mutex);
-
   pthread_mutex_lock(&q->mutex);
 
   while (q->used == q->max_size)
@@ -89,7 +86,8 @@ static void queue_put(mc_queue *q, put_func pf, void *ctx) {
   pthread_mutex_unlock(&q->mutex);
 
   if (q->m) {
-    pthread_cond_signal(&q->m->can_get);
+    pthread_mutex_lock(&q->m->mutex);
+    pthread_cond_broadcast(&q->m->can_get);
     pthread_mutex_unlock(&q->m->mutex);
   }
 }
@@ -211,10 +209,13 @@ static int merger_get_nb(mc_queue_merger *qm, get_func gf, void *ctx, int *got) 
    * queues is full.
    */
 
-  if (be && (nfull || nready + neof == nqueue))
+  if (be && (nfull || nready + neof == nqueue)) {
     *got = queue_get(bq, gf, ctx);
-  else if (neof == nqueue)
-    *got = 1;
+    if (!*got) return merger_get_nb(qm, gf, ctx, got);
+  }
+  else if (neof == nqueue) {
+    *got = 1; /* synthetic eof */
+  }
 
   return neof < nqueue;
 }
