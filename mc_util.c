@@ -1,11 +1,15 @@
 /* mc_util.c */
 
+#include <jd_pretty.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "mc_util.h"
 
-#define TMP_PREFIX_LEN 10 
+#define TMP_PREFIX_LEN 10
 
 void *mc_alloc(size_t sz) {
   void *m = malloc(sz);
@@ -33,6 +37,38 @@ char *mc_tmp_name(const char *filename) {
   tmp[(slash - filename) + TMP_PREFIX_LEN] = '.';
   memcpy(tmp + (slash - filename) + TMP_PREFIX_LEN + 1, slash, len + filename - slash + 1);
   return tmp;
+}
+
+static char *extract(const char *buf, size_t len) {
+  char *out = mc_alloc(len + 1);
+  memcpy(out, buf, len);
+  return out;
+}
+
+char *mc_dirname(const char *filename) {
+  char *slash = strrchr(filename, '/');
+  if (!slash || slash == filename) return NULL;
+  return extract(filename, slash - filename);
+}
+
+void mc_mkpath(const char *path, mode_t mode) {
+  struct stat st;
+  if (!stat(path, &st) && S_ISDIR(st.st_mode)) return;
+  char *parent = mc_dirname(path);
+  if (parent) {
+    mc_mkpath(parent, mode);
+    free(parent);
+  }
+  if (mkdir(path, mode))
+    jd_throw("Can't create %s: %m", path);
+}
+
+void mc_mkfilepath(const char *filename, mode_t mode) {
+  char *parent = mc_dirname(filename);
+  if (parent) {
+    mc_mkpath(parent, mode);
+    free(parent);
+  }
 }
 
 /* vim:ts=2:sw=2:sts=2:et:ft=c
