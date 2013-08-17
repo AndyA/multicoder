@@ -97,6 +97,8 @@ struct format_context {
 static void format_cb(void *ctx, const char *fmt,
                       const char *lit, unsigned lit_len,
                       unsigned fld_len, const char *sym) {
+  (void) fmt;
+  (void) sym;
   struct format_context *c = ctx;
   memcpy(c->buf, lit, lit_len);
   c->buf += lit_len;
@@ -112,7 +114,6 @@ void mc_sequence_free(mc_sequence *s) {
 }
 
 int mc_sequence_inc(mc_sequence *s) {
-  unsigned pos = s->length;
   for (unsigned pos = s->length; pos > 0; pos--) {
     if (++s->count[pos - 1] < s->radix) return 0;
     s->count[pos - 1] = 0;

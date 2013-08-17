@@ -9,8 +9,10 @@
 
 #include "multicoder.h"
 
-void mc_demux(AVFormatContext *fcx, mc_queue *aq, mc_queue *vq) {
+void mc_demux(AVFormatContext *fcx, jd_var *cfg, mc_queue *aq, mc_queue *vq) {
   AVPacket pkt;
+
+  (void) cfg;
 
   if (avformat_find_stream_info(fcx, NULL) < 0)
     jd_throw("Can't read stream info");

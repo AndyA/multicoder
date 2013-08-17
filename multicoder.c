@@ -12,25 +12,28 @@
 
 typedef struct {
   jd_var *cfg;
+  AVFormatContext *fcx;
   mc_queue_merger *qm;
   pthread_t t;
 } muxer;
 
 static void *hls_muxer(void *ctx) {
   muxer *c = ctx;
-  mc_mux_hls(c->cfg, c->qm);
+  mc_mux_hls(c->fcx, c->cfg, c->qm);
   return NULL;
 }
 
 typedef struct {
   jd_var *cfg;
+  AVFormatContext *fcx;
   mc_queue *in, *out;
   pthread_t t;
 } decoder;
 
-static void h264_decoder(void *ctx) {
+static void *h264_decoder(void *ctx) {
   decoder *c = ctx;
-  mc_h264_decode(c->cfg, c->in, c->out);
+  mc_h264_decode(c->fcx, c->cfg, c->in, c->out);
+  return NULL;
 }
 
 static int dts_compare(mc_queue_entry *a, mc_queue_entry *b, void *ctx) {
@@ -56,63 +59,58 @@ int main(int argc, char *argv[]) {
 
     mc_info("Starting multicoder");
 
+    muxer hls;
+
+    hls.fcx = fcx;
+    hls.qm = mc_queue_merger_new(dts_compare, NULL);
+
+    mc_queue *haq = mc_queue_new(100);
+    mc_queue *hvq = mc_queue_new(100);
+
     if (1) {
-      muxer hls;
-
-      mc_queue *aq = mc_queue_new(100);
-      mc_queue *vq = mc_queue_new(100);
-
       hls.cfg = mc_model_get(cfg, NULL, "$.tasks.0.streams.1");
       mc_debug("hls.cfg = %lJ", hls.cfg);
-      hls.qm = mc_queue_merger_new(dts_compare, NULL);
-      mc_queue_merger_add(hls.qm, aq);
-      mc_queue_merger_add(hls.qm, vq);
+      mc_queue_merger_add(hls.qm, haq);
+      mc_queue_merger_add(hls.qm, hvq);
 
       pthread_create(&hls.t, NULL, hls_muxer, &hls);
 
-      mc_demux(fcx, aq, vq);
-      mc_queue_packet_put(aq, NULL);
-      mc_queue_packet_put(vq, NULL);
+      mc_demux(fcx, NULL, haq, hvq);
+      mc_queue_packet_put(haq, NULL);
+      mc_queue_packet_put(hvq, NULL);
 
       pthread_join(hls.t, NULL);
 
-      avformat_close_input(&fcx);
       mc_queue_merger_free(hls.qm);
-      mc_queue_free(aq);
-      mc_queue_free(vq);
     }
     else {
-      muxer hls;
       decoder dec;
 
-      mc_queue *haq = mc_queue_new(100);
-      mc_queue *hvq = mc_queue_new(100);
       mc_queue *dvq = mc_queue_new(100);
 
       dec.in = hvq;
       dec.out = dvq;
 
-      hls.qm = mc_queue_merger_new(dts_compare, NULL);
       mc_queue_merger_add(hls.qm, haq);
       mc_queue_merger_add(hls.qm, dvq);
 
       pthread_create(&hls.t, NULL, hls_muxer, &hls);
       pthread_create(&dec.t, NULL, h264_decoder, &dec);
 
-      mc_demux(fcx, haq, hvq);
+      mc_demux(fcx, NULL, haq, hvq);
       mc_queue_packet_put(haq, NULL);
       mc_queue_packet_put(hvq, NULL);
 
       pthread_join(hls.t, NULL);
       pthread_join(dec.t, NULL);
 
-      avformat_close_input(&fcx);
       mc_queue_merger_free(hls.qm);
-
-      mc_queue_free(haq);
-      mc_queue_free(hvq);
       mc_queue_free(dvq);
     }
+    avformat_close_input(&fcx);
+
+    mc_queue_free(haq);
+    mc_queue_free(hvq);
   }
 
   return 0;

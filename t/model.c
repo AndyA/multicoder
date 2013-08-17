@@ -17,6 +17,7 @@ static void test_getters(void) {
   }
 }
 
+#if 0
 static jd_var *resource_list(jd_var *out, const char const *res[]) {
   jd_set_array(out, 10);
   for (unsigned i = 0; res[i]; i++) {
@@ -27,7 +28,6 @@ static jd_var *resource_list(jd_var *out, const char const *res[]) {
   return out;
 }
 
-#if 0
 static void test_multi(void) {
   static const char *conf[] = {
     "data/general.json",

@@ -53,7 +53,7 @@ static mc_queue_entry *get_entry(mc_queue *q) {
 typedef void (*put_func)(mc_queue *q, mc_queue_entry *qe, void *ctx);
 typedef void (*get_func)(mc_queue *q, mc_queue_entry *qe, void *ctx);
 
-static const char *t_name = { "unknown", "packet", "frame" };
+static const char *t_name[] = { "unknown", "packet", "frame" };
 
 static void check_type(mc_queue *q, mc_queue_type t) {
   if (q->t == MC_UNKNOWN)

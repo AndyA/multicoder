@@ -41,12 +41,13 @@ static unsigned decode(mc_queue *q,
   return got_frame ? 1 : 0;
 }
 
-void mc_h264_decode(jd_var *cfg, mc_queue *qi, mc_queue *qo) {
+void mc_h264_decode(AVFormatContext *fcx, jd_var *cfg, mc_queue *qi, mc_queue *qo) {
   AVCodec *codec;
   AVCodecContext *c;
   AVFrame *frame;
   AVPacket avpkt;
 
+  (void) fcx;
   (void) cfg;
 
   av_init_packet(&avpkt);

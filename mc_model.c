@@ -57,6 +57,7 @@ const char *mc_model_get_str(jd_var *v, const char *fallback, const char *path, 
     jd_stringify(slot, slot);
     JD_RETURN(jd_bytes(slot, NULL));
   }
+  return NULL;
 }
 
 jd_var *mc_model_load_string(jd_var *out, FILE *f) {

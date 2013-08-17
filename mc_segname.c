@@ -103,8 +103,6 @@ char *mc_segname_format(mc_segname *sn) {
   char *buf = mc_alloc(sn->len + 1);
 
   for (mc_segname_field *snf = sn->fld; snf; snf = snf->next) {
-    char tmp[20];
-
     memcpy(buf + snf->pos, snf->frag, snf->frag_len);
     if (snf->field_len) {
       char fmt[20], tmp[snf->field_len + 1];

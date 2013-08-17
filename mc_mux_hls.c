@@ -41,6 +41,8 @@ static void open_output(output_context *oc) {
   mc_debug("writing %s (as %s)", oc->name, oc->tmp_name);
   avformat_alloc_output_context2(&oc->oc, NULL, "mpegts", oc->tmp_name);
   if (!oc->oc) jd_throw("Can't create output context for %s", oc->tmp_name);
+
+
 }
 
 static void init_output(output_context *oc, mc_segname *sn) {
@@ -49,9 +51,11 @@ static void init_output(output_context *oc, mc_segname *sn) {
   oc->name = NULL;
 }
 
-void mc_mux_hls(jd_var *cfg, mc_queue_merger *qm) {
+void mc_mux_hls(AVFormatContext *fcx, jd_var *cfg, mc_queue_merger *qm) {
   AVPacket pkt;
   output_context oc;
+
+  (void) fcx;
 
   jd_var *seg_name = jd_rv(cfg, "$.output.segment");
   if (!seg_name) jd_throw("Missing segment field");
