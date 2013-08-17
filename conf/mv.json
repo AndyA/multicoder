@@ -1,0 +1,6 @@
+{
+   "output" : {
+      "playlist" : "foo.m3u8",
+      "segment" : "foo/%08d/%04d.ts"
+   }
+}

@@ -14,7 +14,7 @@ lib_LTLIBRARIES = libmulticoder.la
 
 include_HEADERS = multicoder.h
 
-bin_PROGRAMS = multicoder
+bin_PROGRAMS = multicoder multivod
 
 libmulticoder_la_SOURCES = \
 	mc_buffer.c \
@@ -42,6 +42,11 @@ multicoder_SOURCES = multicoder.c multicoder.h
 multicoder_CFLAGS = $(LIBAV_CFLAGS)
 multicoder_LDFLAGS = $(LIBAV_LDFLAGS)
 multicoder_LDADD = libmulticoder.la
+
+multivod_SOURCES = multivod.c multicoder.h
+multivod_CFLAGS = $(LIBAV_CFLAGS)
+multivod_LDFLAGS = $(LIBAV_LDFLAGS)
+multivod_LDADD = libmulticoder.la
 
 test: all
 	cd t && $(MAKE) test
