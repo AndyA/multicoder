@@ -1,9 +1,11 @@
 /* mc_util.c */
 
 #include <jd_pretty.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -69,6 +71,25 @@ void mc_mkfilepath(const char *filename, mode_t mode) {
     mc_mkpath(parent, mode);
     free(parent);
   }
+}
+
+static pthread_mutex_t wait_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t wait_cond = PTHREAD_COND_INITIALIZER;
+
+void mc_usleep(uint64_t usec) {
+  struct timespec ts;
+  struct timeval now;
+
+  gettimeofday(&now, NULL);
+
+  usec += now.tv_usec;
+
+  ts.tv_sec = now.tv_sec + (usec / 1000000);
+  ts.tv_nsec = (usec % 1000000) * 1000;
+
+  pthread_mutex_lock(&wait_mutex);
+  pthread_cond_timedwait(&wait_cond, &wait_mutex, &ts);
+  pthread_mutex_unlock(&wait_mutex);
 }
 
 /* vim:ts=2:sw=2:sts=2:et:ft=c

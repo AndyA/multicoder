@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include <stdint.h>
 #include <sys/types.h>
 
   void *mc_alloc(size_t sz);
@@ -16,6 +17,7 @@ extern "C" {
   char *mc_dirname(const char *filename);
   void mc_mkpath(const char *path, mode_t mode);
   void mc_mkfilepath(const char *filename, mode_t mode);
+  void mc_usleep(uint64_t usec);
 
 #ifdef __cplusplus
 }
