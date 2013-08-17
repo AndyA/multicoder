@@ -1,6 +1,7 @@
 /* mc_mux_hls.c */
 
 #include <jd_pretty.h>
+#include <math.h>
 #include <stdio.h>
 
 #include <libavformat/avformat.h>
@@ -148,6 +149,8 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
   ic->flags |= AVFMT_FLAG_IGNDTS;
 
   av_init_packet(&pkt);
+  double gop_time = NAN;
+  double min_gop = mc_model_get_real(cfg, 4, "$.output.min_gop");
 
   while (mc_queue_merger_packet_get(qm, &pkt)) {
     mc_debug("HLS got %d (flags=%08x, pts=%llu, dts=%llu, duration=%d)",
@@ -156,8 +159,16 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
              (unsigned long long) pkt.dts,
              pkt.duration);
 
-    if (pkt.stream_index == vi && (pkt.flags & AV_PKT_FLAG_KEY))
-      seg_close(&sf, oc);
+    if ((pkt.stream_index == vi && (pkt.flags & AV_PKT_FLAG_KEY)) || vi == -1) {
+      double st = pkt.pts * av_q2d((pkt.stream_index == vi ? vs : as)->time_base);
+      if (isnan(gop_time)) {
+        gop_time = st;
+      }
+      else if (st - gop_time >= min_gop) {
+        seg_close(&sf, oc);
+        gop_time = st;
+      }
+    }
 
     seg_open(&sf, oc);
 

@@ -11,6 +11,7 @@
                },
                "name" : "sd",
                "output" : {
+                  "min_gop" : 1,
                   "playlist" : "foo/sd.m3u8",
                   "segment" : "foo/sd/%08d/%04d.ts"
                },
