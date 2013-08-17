@@ -73,13 +73,12 @@ int main(int argc, char *argv[]) {
     muxer hls;
 
     hls.ic = ic;
-/*    hls.qm = mc_queue_merger_new(nop_compare, NULL);*/
     hls.qm = mc_queue_merger_new(dts_compare, NULL);
 
     mc_queue *haq = mc_queue_new(100);
     mc_queue *hvq = mc_queue_new(100);
 
-    hls.cfg = mc_model_get(cfg, NULL, "$.tasks.0.streams.1");
+    hls.cfg = mc_model_get(cfg, NULL, "$.streams.1");
     mc_debug("hls.cfg = %lJ", hls.cfg);
     mc_queue_merger_add(hls.qm, haq);
     mc_queue_merger_add(hls.qm, hvq);

@@ -1,59 +1,57 @@
 {
-   "tasks" : [
+   "streams" : [
       {
-         "name" : "a",
-         "streams" : [
-            {
-               "audio" : {
-                  "bit_rate" : 96000,
-                  "slave" : "hd",
-                  "type" : "aac"
-               },
-               "name" : "sd",
-               "output" : {
-                  "min_gop" : 1,
-                  "playlist" : "foo/sd.m3u8",
-                  "segment" : "foo/sd/%08d/%04d.ts"
-               },
-               "video" : {
-                  "bit_rate" : 800000,
-                  "height" : 360,
-                  "slave" : "hd",
-                  "type" : "h264",
-                  "width" : 640
-               }
-            },
-            {
-               "audio" : {
-                  "type" : "direct"
-               },
-               "name" : "hd",
-               "output" : {
-                  "playlist" : "foo/hd.m3u8",
-                  "segment" : "foo/hd/%08d/%04d.ts"
-               },
-               "video" : {
-                  "type" : "direct"
-               }
-            },
-            {
-               "audio" : {
-                  "type" : "direct"
-               },
-               "name" : "mobile",
-               "output" : {
-                  "playlist" : "foo/mobile.m3u8",
-                  "segment" : "foo/mobile/%08d/%04d.ts"
-               },
-               "video" : {
-                  "bit_rate" : 380000,
-                  "height" : 224,
-                  "slave" : "hd",
-                  "type" : "h264",
-                  "width" : 400
-               }
-            }
-         ]
+         "audio" : {
+            "bit_rate" : 96000,
+            "slave" : "hd",
+            "type" : "aac"
+         },
+         "enabled" : false,
+         "name" : "sd",
+         "output" : {
+            "min_gop" : 1,
+            "playlist" : "foo/sd.m3u8",
+            "segment" : "foo/sd/%08d/%04d.ts"
+         },
+         "video" : {
+            "bit_rate" : 800000,
+            "height" : 360,
+            "slave" : "hd",
+            "type" : "h264",
+            "width" : 640
+         }
+      },
+      {
+         "audio" : {
+            "type" : "direct"
+         },
+         "enabled" : true,
+         "name" : "hd",
+         "output" : {
+            "playlist" : "foo/hd.m3u8",
+            "segment" : "foo/hd/%08d/%04d.ts"
+         },
+         "video" : {
+            "type" : "direct"
+         }
+      },
+      {
+         "audio" : {
+            "type" : "direct"
+         },
+         "enabled" : false,
+         "name" : "mobile",
+         "output" : {
+            "playlist" : "foo/mobile.m3u8",
+            "segment" : "foo/mobile/%08d/%04d.ts"
+         },
+         "video" : {
+            "bit_rate" : 380000,
+            "height" : 224,
+            "slave" : "hd",
+            "type" : "h264",
+            "width" : 400
+         }
       }
    ]
 }
