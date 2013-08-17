@@ -44,6 +44,7 @@ static AVStream *add_output(AVFormatContext *oc, AVStream *is) {
   case AVMEDIA_TYPE_AUDIO:
     occ->channel_layout = icc->channel_layout;
     occ->sample_rate = icc->sample_rate;
+    occ->sample_fmt = icc->sample_fmt;
     occ->channels = icc->channels;
     occ->frame_size = icc->frame_size;
     occ->block_align = icc->block_align;
@@ -112,6 +113,7 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
   AVPacket pkt;
   AVStream *vs = NULL, *as = NULL;
   seg_file sf;
+  int vi = -1;
 
   jd_var *seg_name = jd_rv(cfg, "$.output.segment");
   if (!seg_name) jd_throw("Missing segment field");
@@ -131,6 +133,7 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
 
     if (!vs && is->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
       vs = add_output(oc, is);
+      vi = i;
       continue;
     }
 
@@ -152,6 +155,9 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
              (unsigned long long) pkt.pts,
              (unsigned long long) pkt.dts,
              pkt.duration);
+
+    if (pkt.stream_index == vi && (pkt.flags & AV_PKT_FLAG_KEY))
+      seg_close(&sf, oc);
 
     seg_open(&sf, oc);
 

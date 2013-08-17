@@ -78,50 +78,28 @@ int main(int argc, char *argv[]) {
     mc_queue *haq = mc_queue_new(100);
     mc_queue *hvq = mc_queue_new(100);
 
-    if (1) {
-      hls.cfg = mc_model_get(cfg, NULL, "$.tasks.0.streams.1");
-      mc_debug("hls.cfg = %lJ", hls.cfg);
-      mc_queue_merger_add(hls.qm, haq);
-      mc_queue_merger_add(hls.qm, hvq);
+    hls.cfg = mc_model_get(cfg, NULL, "$.tasks.0.streams.1");
+    mc_debug("hls.cfg = %lJ", hls.cfg);
+    mc_queue_merger_add(hls.qm, haq);
+    mc_queue_merger_add(hls.qm, hvq);
 
-      pthread_create(&hls.t, NULL, hls_muxer, &hls);
+    pthread_create(&hls.t, NULL, hls_muxer, &hls);
 
-      mc_demux(ic, NULL, haq, hvq);
-      mc_queue_packet_put(haq, NULL);
-      mc_queue_packet_put(hvq, NULL);
+    mc_demux(ic, NULL, haq, hvq);
+    mc_queue_packet_put(haq, NULL);
+    mc_queue_packet_put(hvq, NULL);
 
-      pthread_join(hls.t, NULL);
+    pthread_join(hls.t, NULL);
 
-      mc_queue_merger_free(hls.qm);
-    }
-    else {
-      decoder dec;
-
-      mc_queue *dvq = mc_queue_new(100);
-
-      dec.in = hvq;
-      dec.out = dvq;
-
-      mc_queue_merger_add(hls.qm, haq);
-      mc_queue_merger_add(hls.qm, dvq);
-
-      pthread_create(&hls.t, NULL, hls_muxer, &hls);
-      pthread_create(&dec.t, NULL, h264_decoder, &dec);
-
-      mc_demux(ic, NULL, haq, hvq);
-      mc_queue_packet_put(haq, NULL);
-      mc_queue_packet_put(hvq, NULL);
-
-      pthread_join(hls.t, NULL);
-      pthread_join(dec.t, NULL);
-
-      mc_queue_merger_free(hls.qm);
-      mc_queue_free(dvq);
-    }
+    mc_queue_merger_free(hls.qm);
     avformat_close_input(&ic);
 
     mc_queue_free(haq);
     mc_queue_free(hvq);
+
+    av_free(ic);
+
+    avformat_network_deinit();
   }
 
   return 0;

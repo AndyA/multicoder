@@ -24,7 +24,9 @@ void mc_demux(AVFormatContext *ic, jd_var *cfg, mc_queue *aq, mc_queue *vq) {
   pkt.size = 0;
 
   while (av_read_frame(ic, &pkt) >= 0) {
-    av_dup_packet(&pkt); /* force refcount */
+    if (av_dup_packet(&pkt))
+      jd_throw("Can't duplicate packet");
+
     if (pkt.stream_index == aud)
       mc_queue_packet_put(aq, &pkt);
     else if (pkt.stream_index == vid)
