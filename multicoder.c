@@ -13,25 +13,23 @@
 typedef struct {
   jd_var *cfg;
   AVFormatContext *ic;
-  mc_queue_merger *qm;
+  mc_queue_merger *in;
+  mc_queue *out;
   pthread_t t;
-} muxer;
+} block;
+
+typedef struct {
+  block dec, mux;
+} stream;
 
 static void *hls_muxer(void *ctx) {
-  muxer *c = ctx;
-  mc_mux_hls(c->ic, c->cfg, c->qm);
+  block *c = ctx;
+  mc_mux_hls(c->ic, c->cfg, c->in);
   return NULL;
 }
 
-typedef struct {
-  jd_var *cfg;
-  AVFormatContext *ic;
-  mc_queue *in, *out;
-  pthread_t t;
-} decoder;
-
 static void *h264_decoder(void *ctx) {
-  decoder *c = ctx;
+  block *c = ctx;
   mc_h264_decode(c->ic, c->cfg, c->in, c->out);
   return NULL;
 }
@@ -70,18 +68,18 @@ int main(int argc, char *argv[]) {
     if (avformat_find_stream_info(ic, NULL) < 0)
       jd_throw("Can't read stream info");
 
-    muxer hls;
+    block hls;
 
     hls.ic = ic;
-    hls.qm = mc_queue_merger_new(dts_compare, NULL);
+    hls.in = mc_queue_merger_new(dts_compare, NULL);
 
     mc_queue *haq = mc_queue_new(100);
     mc_queue *hvq = mc_queue_new(100);
 
     hls.cfg = mc_model_get(cfg, NULL, "$.streams.1");
     mc_debug("hls.cfg = %lJ", hls.cfg);
-    mc_queue_merger_add(hls.qm, haq);
-    mc_queue_merger_add(hls.qm, hvq);
+    mc_queue_merger_add(hls.in, haq);
+    mc_queue_merger_add(hls.in, hvq);
 
     pthread_create(&hls.t, NULL, hls_muxer, &hls);
 
@@ -91,7 +89,7 @@ int main(int argc, char *argv[]) {
 
     pthread_join(hls.t, NULL);
 
-    mc_queue_merger_free(hls.qm);
+    mc_queue_merger_free(hls.in);
     avformat_close_input(&ic);
 
     mc_queue_free(haq);
