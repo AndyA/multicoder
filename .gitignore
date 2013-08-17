@@ -49,3 +49,4 @@ Makefile.in
 Session.vim
 aclocal.m4
 foo.*
+foo/
