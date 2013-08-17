@@ -41,6 +41,13 @@ static int dts_compare(mc_queue_entry *a, mc_queue_entry *b, void *ctx) {
   return a->d.pkt.dts < b->d.pkt.dts ? -1 : a->d.pkt.dts > b->d.pkt.dts ? 1 : 0;
 }
 
+static int nop_compare(mc_queue_entry *a, mc_queue_entry *b, void *ctx) {
+  (void) a;
+  (void) b;
+  (void) ctx;
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   srand((unsigned) time(NULL));
   scope {
@@ -66,7 +73,7 @@ int main(int argc, char *argv[]) {
     muxer hls;
 
     hls.ic = ic;
-    hls.qm = mc_queue_merger_new(dts_compare, NULL);
+    hls.qm = mc_queue_merger_new(nop_compare, NULL);
 
     mc_queue *haq = mc_queue_new(100);
     mc_queue *hvq = mc_queue_new(100);
