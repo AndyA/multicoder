@@ -9,6 +9,17 @@
 #include "mc_segname.h"
 #include "mc_util.h"
 
+static void free_names(mc_segname *sn) {
+  if (sn->cur_name) {
+    free(sn->cur_name);
+    sn->cur_name = NULL;
+  }
+  if (sn->tmp_name) {
+    free(sn->tmp_name);
+    sn->tmp_name = NULL;
+  }
+}
+
 static unsigned push_field(mc_segname *sn, const char *frag,
                            unsigned frag_len, unsigned field_len, unsigned pos) {
   mc_segname_field *snf = mc_alloc(sizeof(*snf));
@@ -68,12 +79,14 @@ static void free_fields(mc_segname_field *snf) {
 void mc_segname_free(mc_segname *sn) {
   if (sn) {
     free_fields(sn->fld);
+    free_names(sn);
     free(sn);
   }
 }
 
 int mc_segname_parse(mc_segname *sn, const char *name) {
   if (strlen(name) != sn->len) return 0;
+  free_names(sn);
   for (mc_segname_field *snf = sn->fld; snf; snf = snf->next) {
     if (snf->field_len) {
       char tmp[snf->field_len + 1];
@@ -90,6 +103,7 @@ int mc_segname_parse(mc_segname *sn, const char *name) {
 }
 
 int mc_segname_inc(mc_segname *sn) {
+  free_names(sn);
   for (mc_segname_field *snf = sn->fld; snf; snf = snf->next) {
     uint64_t limit = 1;
     for (unsigned i = 0; i < snf->field_len; i++) limit *= 10;
@@ -119,6 +133,26 @@ char *mc_segname_next(mc_segname *sn) {
   char *next = mc_segname_format(sn);
   mc_segname_inc(sn);
   return next;
+}
+
+char *mc_segname_name(mc_segname *sn) {
+  if (!sn->cur_name)
+    sn->cur_name = mc_segname_format(sn);
+  return sn->cur_name;
+}
+
+char *mc_segname_temp(mc_segname *sn) {
+  if (!sn->tmp_name)
+    sn->tmp_name = mc_tmp_name(mc_segname_name(sn));
+  return sn->tmp_name;
+}
+
+void mc_segname_rename(mc_segname *sn) {
+  char *temp = mc_segname_temp(sn);
+  char *name = mc_segname_name(sn);
+  mc_debug("renaming %s as %s", temp, name);
+  if (rename(temp, name))
+    jd_throw("Can't rename %s as %s: %m", temp, name);
 }
 
 /* vim:ts=2:sw=2:sts=2:et:ft=c

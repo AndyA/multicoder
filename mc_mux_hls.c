@@ -73,8 +73,6 @@ static AVStream *add_output(AVFormatContext *oc, AVStream *is) {
 
 typedef struct {
   mc_segname *sn;
-  char *name;
-  char *tmp_name;
   int open;
 } seg_file;
 
@@ -85,24 +83,21 @@ static void seg_close(seg_file *sf, AVFormatContext *oc) {
     avio_close(oc->pb);
     sf->open = 0;
 
-    mc_debug("renaming %s as %s", sf->tmp_name, sf->name);
-    if (rename(sf->tmp_name, sf->name))
-      jd_throw("Can't rename %s as %s: %m", sf->tmp_name, sf->name);
-
-    free(sf->name);
-    free(sf->tmp_name);
+    mc_segname_rename(sf->sn);
+    mc_segname_inc(sf->sn);
   }
 }
 
 static void seg_open(seg_file *sf, AVFormatContext *oc) {
   if (!sf->open) {
-    sf->name = mc_segname_next(sf->sn);
-    sf->tmp_name = mc_tmp_name(sf->name);
-    mc_debug("writing %s (as %s)", sf->name, sf->tmp_name);
-    mc_mkfilepath(sf->tmp_name, 0777);
+    char *name = mc_segname_name(sf->sn);
+    char *temp = mc_segname_temp(sf->sn);
 
-    if (avio_open(&oc->pb, sf->tmp_name, AVIO_FLAG_WRITE) < 0)
-      jd_throw("Can't write %s: %m", sf->tmp_name);
+    mc_debug("writing %s (as %s)", name, temp);
+    mc_mkfilepath(temp, 0777);
+
+    if (avio_open(&oc->pb, temp, AVIO_FLAG_WRITE) < 0)
+      jd_throw("Can't write %s: %m", temp);
     if (avformat_write_header(oc, NULL))
       jd_throw("Can't write header");
     sf->open = 1;

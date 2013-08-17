@@ -21,6 +21,8 @@ extern "C" {
     mc_segname_field *fld;
     const char *fmt;
     unsigned len;
+    char *cur_name;
+    char *tmp_name;
   } mc_segname;
 
   mc_segname *mc_segname_new(const char *fmt);
@@ -29,6 +31,9 @@ extern "C" {
   int mc_segname_inc(mc_segname *sn);
   char *mc_segname_format(mc_segname *sn);
   char *mc_segname_next(mc_segname *sn);
+  char *mc_segname_name(mc_segname *sn);
+  char *mc_segname_temp(mc_segname *sn);
+  void mc_segname_rename(mc_segname *sn);
 
 #ifdef __cplusplus
 }
