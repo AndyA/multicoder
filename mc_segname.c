@@ -150,7 +150,6 @@ char *mc_segname_temp(mc_segname *sn) {
 void mc_segname_rename(mc_segname *sn) {
   char *temp = mc_segname_temp(sn);
   char *name = mc_segname_name(sn);
-  mc_debug("renaming %s as %s", temp, name);
   if (rename(temp, name))
     jd_throw("Can't rename %s as %s: %m", temp, name);
 }
