@@ -90,8 +90,8 @@ static void seg_close(seg_file *sf, AVFormatContext *oc) {
 
 static void seg_open(seg_file *sf, AVFormatContext *oc) {
   if (!sf->open) {
-    char *name = mc_segname_name(sf->sn);
-    char *temp = mc_segname_temp(sf->sn);
+    const char *name = mc_segname_name(sf->sn);
+    const char *temp = mc_segname_temp(sf->sn);
 
     mc_debug("writing %s (as %s)", name, temp);
     mc_mkfilepath(temp, 0777);
