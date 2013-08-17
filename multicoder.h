@@ -18,8 +18,8 @@
 #include "mc_util.h"
 
 #define MC_ERROR_LEVELS \
-  X(ERROR)    \
   X(FATAL)    \
+  X(ERROR)    \
   X(WARNING)  \
   X(INFO)     \
   X(DEBUG)
@@ -34,6 +34,8 @@ enum {
 
 extern unsigned mc_log_level;
 extern unsigned mc_log_colour;
+
+void mc_log_avutil(void *ptr, int level, const char *msg, va_list ap);
 
 void mc_debug(const char *msg, ...);
 void mc_info(const char *msg, ...);

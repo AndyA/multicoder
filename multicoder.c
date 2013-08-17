@@ -46,6 +46,7 @@ int main(int argc, char *argv[]) {
   scope {
     AVFormatContext *fcx = NULL;
 
+    av_log_set_callback(mc_log_avutil);
     av_register_all();
     avcodec_register_all();
     avformat_network_init();

@@ -10,6 +10,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <libavutil/log.h>
+
 #define TS_FORMAT "%Y/%m/%d %H:%M:%S"
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -59,6 +61,8 @@ static void mc_log(unsigned level, const char *msg, va_list ap) {
     jd_vsprintf(str, msg, ap);
     jd_split(ln, str, jd_nsv("\n"));
     count = jd_count(ln);
+    jd_var *last = jd_get_idx(ln, count - 1);
+    if (jd_length(last) == 0) count--;
 
     pthread_mutex_lock(&mutex);
     for (i = 0; i < count; i++) {
@@ -66,6 +70,28 @@ static void mc_log(unsigned level, const char *msg, va_list ap) {
     }
     pthread_mutex_unlock(&mutex);
   }
+}
+
+static unsigned avu2mc(int level) {
+  struct {
+    int avl;
+    unsigned mcl;
+  } lmap[] = {
+    {AV_LOG_DEBUG, DEBUG},
+    {AV_LOG_INFO, INFO},
+    {AV_LOG_WARNING, WARNING},
+    {AV_LOG_ERROR, ERROR},
+    {AV_LOG_FATAL, FATAL},
+  };
+
+  for (unsigned i = 0; i < sizeof(lmap) / sizeof(lmap[0]); i++)
+    if (level >= lmap[i].avl) return lmap[i].mcl;
+  return FATAL;
+}
+
+void mc_log_avutil(void *ptr, int level, const char *msg, va_list ap) {
+  (void) ptr;
+  mc_log(avu2mc(level), msg, ap);
 }
 
 #define LOGGER(name, level)          \
