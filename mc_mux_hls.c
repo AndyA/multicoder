@@ -121,7 +121,7 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
     jd_throw("Can't allocate output context");
 
   if (oc->oformat = av_guess_format("mpegts", NULL, NULL), !oc->oformat)
-    jd_throw("Can't find mpegts mulitplexer");
+    jd_throw("Can't find mpegts multiplexer");
 
   for (unsigned i = 0; i < ic->nb_streams; i++) {
     AVStream *is = ic->streams[i];
@@ -144,6 +144,7 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
   ic->flags |= AVFMT_FLAG_IGNDTS;
 
   av_init_packet(&pkt);
+
   double gop_time = NAN;
   double min_gop = mc_model_get_real(cfg, 4, "$.output.min_gop");
 
