@@ -73,7 +73,8 @@ int main(int argc, char *argv[]) {
     muxer hls;
 
     hls.ic = ic;
-    hls.qm = mc_queue_merger_new(nop_compare, NULL);
+/*    hls.qm = mc_queue_merger_new(nop_compare, NULL);*/
+    hls.qm = mc_queue_merger_new(dts_compare, NULL);
 
     mc_queue *haq = mc_queue_new(100);
     mc_queue *hvq = mc_queue_new(100);
