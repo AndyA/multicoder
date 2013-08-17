@@ -25,16 +25,16 @@ mc_queue *mc_queue_hook(mc_queue *q, mc_queue *nq) {
 static void free_entries(mc_queue_entry *qe) {
   for (mc_queue_entry *next = qe; next; qe = next) {
     next = qe->next;
+    /* TODO!! polymorphism! */
     av_free_packet(&qe->d.pkt);
     free(qe);
   }
 }
 
 void mc_queue_free(mc_queue *q) {
-  for (mc_queue *pnext = q; pnext; q = pnext) {
+  if (q) {
     free_entries(q->head);
     free_entries(q->free);
-    pnext = q->pnext;
     free(q);
   }
 }
@@ -144,14 +144,23 @@ void mc_queue_merger_add(mc_queue_merger *qm, mc_queue *q) {
   q->m = qm;
 }
 
+static void free_list(mc_queue *q) {
+  for (mc_queue *next = q; next; q = next) {
+    next = q->mnext;
+    mc_queue_free(q);
+  }
+}
+
 void mc_queue_merger_empty(mc_queue_merger *qm) {
-  for (mc_queue *q = qm->head; q; q = q->mnext) q->m = NULL;
+  free_list(qm->head);
   qm->head = NULL;
 }
 
 void mc_queue_merger_free(mc_queue_merger *qm) {
-  mc_queue_merger_empty(qm);
-  free(qm);
+  if (qm) {
+    mc_queue_merger_empty(qm);
+    free(qm);
+  }
 }
 
 static mc_queue *rotate(mc_queue *lq) {

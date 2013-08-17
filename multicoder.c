@@ -18,7 +18,8 @@ typedef struct {
   pthread_t t;
 } block;
 
-typedef struct {
+typedef struct stream {
+  struct stream *next;
   block dec, mux;
 } stream;
 
@@ -91,9 +92,6 @@ int main(int argc, char *argv[]) {
 
     mc_queue_merger_free(hls.in);
     avformat_close_input(&ic);
-
-    mc_queue_free(haq);
-    mc_queue_free(hvq);
 
     av_free(ic);
 
