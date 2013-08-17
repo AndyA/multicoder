@@ -79,6 +79,7 @@ typedef struct {
 static void seg_close(seg_file *sf, AVFormatContext *oc) {
   if (sf->open) {
     av_write_trailer(oc);
+    avio_flush(oc->pb);
     avio_close(oc->pb);
     sf->open = 0;
 
@@ -110,7 +111,6 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
   AVFormatContext *oc;
   AVPacket pkt;
   AVStream *vs = NULL, *as = NULL;
-  unsigned vi = 0, ai = 0;
   seg_file sf;
 
   jd_var *seg_name = jd_rv(cfg, "$.output.segment");
@@ -130,13 +130,11 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
     is->discard = AVDISCARD_NONE;
 
     if (!vs && is->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
-      vi = i;
       vs = add_output(oc, is);
       continue;
     }
 
     if (!as && is->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
-      ai = i;
       as = add_output(oc, is);
       continue;
     }
