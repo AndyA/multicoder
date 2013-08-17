@@ -46,14 +46,12 @@ static AVStream *add_output(AVFormatContext *oc, AVStream *is) {
     occ->sample_rate = icc->sample_rate;
     occ->channels = icc->channels;
     occ->frame_size = icc->frame_size;
+    occ->block_align = icc->block_align;
     if ((icc->block_align == 1 && icc->codec_id == CODEC_ID_MP3)
-        || icc->codec_id == CODEC_ID_AC3) {
+        || icc->codec_id == CODEC_ID_AC3)
       occ->block_align = 0;
-    }
-    else {
-      occ->block_align = icc->block_align;
-    }
     break;
+
   case AVMEDIA_TYPE_VIDEO:
     occ->pix_fmt = icc->pix_fmt;
     occ->width = icc->width;
@@ -63,6 +61,7 @@ static AVStream *add_output(AVFormatContext *oc, AVStream *is) {
     if (oc->oformat->flags & AVFMT_GLOBALHEADER)
       occ->flags |= CODEC_FLAG_GLOBAL_HEADER;
     break;
+
   default:
     break;
   }
