@@ -117,6 +117,7 @@ int main(int argc, char *argv[]) {
     AVFormatContext *ic = NULL;
     AVFormatContext *oc;
     AVStream *vs = NULL, *as = NULL;
+    int vi = -1;
     seg_file sf;
 
     av_log_set_callback(mc_log_avutil);
@@ -148,6 +149,7 @@ int main(int argc, char *argv[]) {
 
       if (!vs && is->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
         vs = add_output(oc, is);
+        vi = i;
         continue;
       }
 
@@ -180,6 +182,9 @@ int main(int argc, char *argv[]) {
     while (av_read_frame(ic, &pkt) >= 0) {
       if (av_dup_packet(&pkt))
         jd_throw("Can't duplicate packet");
+
+      if (pkt.stream_index == vi && (pkt.flags & AV_PKT_FLAG_KEY))
+        seg_close(&sf, oc);
 
       seg_open(&sf, oc);
 
