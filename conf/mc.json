@@ -11,8 +11,8 @@
                },
                "name" : "sd",
                "output" : {
-                  "playlist" : "sd.m3u8",
-                  "segment" : "sd/%08d/%04d.ts"
+                  "playlist" : "foo/sd.m3u8",
+                  "segment" : "foo/sd/%08d/%04d.ts"
                },
                "video" : {
                   "bit_rate" : 800000,
@@ -28,8 +28,8 @@
                },
                "name" : "hd",
                "output" : {
-                  "playlist" : "hd.m3u8",
-                  "segment" : "hd/%08d/%04d.ts"
+                  "playlist" : "foo/hd.m3u8",
+                  "segment" : "foo/hd/%08d/%04d.ts"
                },
                "video" : {
                   "type" : "direct"
@@ -41,8 +41,8 @@
                },
                "name" : "mobile",
                "output" : {
-                  "playlist" : "mobile.m3u8",
-                  "segment" : "mobile/%08d/%04d.ts"
+                  "playlist" : "foo/mobile.m3u8",
+                  "segment" : "foo/mobile/%08d/%04d.ts"
                },
                "video" : {
                   "bit_rate" : 380000,
