@@ -41,7 +41,7 @@ static unsigned decode(mc_queue *q,
   return got_frame ? 1 : 0;
 }
 
-void mc_h264_decode(AVFormatContext *fcx, jd_var *cfg, mc_queue *qi, mc_queue *qo) {
+void mc_h264_decode(AVFormatContext *fcx, jd_var *cfg, mc_queue_merger *qi, mc_queue *qo) {
   AVCodec *codec;
   AVCodecContext *c;
   AVFrame *frame;
@@ -74,7 +74,7 @@ void mc_h264_decode(AVFormatContext *fcx, jd_var *cfg, mc_queue *qi, mc_queue *q
   frame = avcodec_alloc_frame();
   if (!frame) jd_throw("Can't allocate frame");
 
-  while (mc_queue_packet_get(qi, &avpkt))
+  while (mc_queue_merger_packet_get(qi, &avpkt))
     decode(qo, c, frame, &avpkt);
 
   avpkt.data = NULL;
