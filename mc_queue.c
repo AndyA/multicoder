@@ -24,13 +24,16 @@ static void unhook(mc_queue *q) {
 }
 
 mc_queue *mc_queue_hook(mc_queue *q, mc_queue *nq) {
+  mc_queue *qn = q->pnext;
   pthread_mutex_lock(&q->mutex);
   pthread_mutex_lock(&nq->mutex);
+  pthread_mutex_lock(&qn->mutex);
   unhook(nq);
   nq->pprev = q;
-  nq->pnext = q->pnext;
+  nq->pnext = qn;
   nq->pnext->pprev = nq;
   nq->pprev->pnext = nq;
+  pthread_mutex_unlock(&qn->mutex);
   pthread_mutex_unlock(&nq->mutex);
   pthread_mutex_unlock(&q->mutex);
   return q;
