@@ -33,7 +33,7 @@ extern "C" {
   typedef struct mc_queue_merger mc_queue_merger;
 
   typedef struct mc_queue {
-    struct mc_queue *pnext, *mnext;
+    struct mc_queue *pprev, *pnext, *mnext;
 
     mc_queue_type t;
     size_t used;
@@ -61,6 +61,7 @@ extern "C" {
   mc_queue *mc_queue_new(size_t size);
   void mc_queue_free(mc_queue *q);
   mc_queue *mc_queue_hook(mc_queue *q, mc_queue *nq);
+  mc_queue *mc_queue_unhook(mc_queue *q);
 
 
   mc_queue_entry *mc_queue_peek(mc_queue *q);

@@ -8,6 +8,7 @@
 
 mc_queue *mc_queue_new(size_t size) {
   mc_queue *q = mc_alloc(sizeof(*q));
+  q->pprev = q->pnext = q;
   q->max_size = size;
   q->used = 0;
   pthread_mutex_init(&q->mutex, NULL);
@@ -16,9 +17,29 @@ mc_queue *mc_queue_new(size_t size) {
   return q;
 }
 
+static void unhook(mc_queue *q) {
+  q->pprev->pnext = q->pnext;
+  q->pnext->pprev = q->pprev;
+  q->pprev = q->pnext = q;
+}
+
 mc_queue *mc_queue_hook(mc_queue *q, mc_queue *nq) {
+  pthread_mutex_lock(&q->mutex);
+  pthread_mutex_lock(&nq->mutex);
+  unhook(nq);
+  nq->pprev = q;
   nq->pnext = q->pnext;
-  q->pnext = nq;
+  nq->pnext->pprev = nq;
+  nq->pprev->pnext = nq;
+  pthread_mutex_unlock(&nq->mutex);
+  pthread_mutex_unlock(&q->mutex);
+  return q;
+}
+
+mc_queue *mc_queue_unhook(mc_queue *q) {
+  pthread_mutex_lock(&q->mutex);
+  unhook(q);
+  pthread_mutex_unlock(&q->mutex);
   return q;
 }
 
@@ -33,6 +54,7 @@ static void free_entries(mc_queue_entry *qe) {
 
 void mc_queue_free(mc_queue *q) {
   if (q) {
+    mc_queue_unhook(q);
     free_entries(q->head);
     free_entries(q->free);
     free(q);
@@ -93,7 +115,12 @@ static void queue_put(mc_queue *q, put_func pf, void *ctx) {
 }
 
 static void queue_multi_put(mc_queue *q, put_func pf, void *ctx) {
-  for (; q; q = q->pnext) queue_put(q, pf, ctx);
+  mc_queue *nq = q;
+  do {
+    queue_put(q, pf, ctx);
+    nq = nq->pnext;
+  }
+  while (nq != q);
 }
 
 static int queue_get(mc_queue *q, get_func gf, void *ctx) {
