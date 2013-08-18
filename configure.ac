@@ -26,6 +26,8 @@ AC_CONFIG_FILES([
 Makefile
 m4/Makefile
 t/Makefile
+libhls/Makefile
+libhls/t/Makefile
 ])
 
 AC_OUTPUT

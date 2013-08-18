@@ -1,6 +1,6 @@
-DIST_SUBDIRS = m4 t
+DIST_SUBDIRS = m4 t libhls
 
-SUBDIRS = . t
+SUBDIRS = . t libhls
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -34,6 +34,8 @@ libmulticoder_la_SOURCES = \
 	mc_util.c \
 	mc_util.h \
 	multicoder.h
+
+LDADD = libhls/libhls.la
 
 libmulticoder_la_CFLAGS = $(LIBAV_CFLAGS)
 libmulticoder_la_LDFLAGS = -avoid-version $(LIBAV_LDFLAGS)
