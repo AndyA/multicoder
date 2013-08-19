@@ -9,15 +9,17 @@
 #include "mc_segname.h"
 #include "mc_util.h"
 
+static void freep(char **cp) {
+  if (*cp) {
+    free(*cp);
+    *cp = NULL;
+  }
+}
+
 static void free_names(mc_segname *sn) {
-  if (sn->cur_name) {
-    free(sn->cur_name);
-    sn->cur_name = NULL;
-  }
-  if (sn->tmp_name) {
-    free(sn->tmp_name);
-    sn->tmp_name = NULL;
-  }
+  freep(&sn->uri);
+  freep(&sn->cur_name);
+  freep(&sn->tmp_name);
 }
 
 static unsigned push_field(mc_segname *sn, const char *frag,
@@ -62,11 +64,16 @@ static unsigned parse_format(mc_segname *sn) {
   return push_field(sn, lp, fmt - lp, 0, pos);
 }
 
-mc_segname *mc_segname_new(const char *fmt) {
+mc_segname *mc_segname_new_prefixed(const char *fmt, const char *prefix) {
   mc_segname *sn = mc_alloc(sizeof(*sn));
   sn->fmt = fmt;
   sn->len = parse_format(sn);
+  sn->prefix = mc_strdup(prefix);
   return sn;
+}
+
+mc_segname *mc_segname_new(const char *fmt) {
+  return mc_segname_new_prefixed(fmt, NULL);
 }
 
 static void free_fields(mc_segname_field *snf) {
@@ -80,6 +87,7 @@ void mc_segname_free(mc_segname *sn) {
   if (sn) {
     free_fields(sn->fld);
     free_names(sn);
+    free(sn->prefix);
     free(sn);
   }
 }
@@ -135,9 +143,15 @@ char *mc_segname_next(mc_segname *sn) {
   return next;
 }
 
+char *mc_segname_uri(mc_segname *sn) {
+  if (!sn->uri)
+    sn->uri = mc_segname_format(sn);
+  return sn->uri;
+}
+
 char *mc_segname_name(mc_segname *sn) {
   if (!sn->cur_name)
-    sn->cur_name = mc_segname_format(sn);
+    sn->cur_name = mc_prefix(mc_segname_uri(sn), sn->prefix);
   return sn->cur_name;
 }
 
