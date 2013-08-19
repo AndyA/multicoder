@@ -54,6 +54,6 @@ test: all
 	cd libhls && $(MAKE) test
 	cd t && $(MAKE) test
 
-hls/libhls.la:
+libhls/libhls.la:
 	cd libhls && $(MAKE)
 

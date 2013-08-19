@@ -2,7 +2,7 @@ AC_INIT([multicoder],[m4_esyscmd(sh tools/get-version.sh)])
 
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE([foreign])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AM_MAINTAINER_MODE
 
 AC_CONFIG_HEADER([config.h])
