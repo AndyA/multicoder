@@ -202,6 +202,11 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
     mc_segname *pl_name = mc_segname_new_prefixed(
       cfg_need(cfg, "$.output.playlist"), prefix);
 
+    double gop_time = NAN;
+    double min_gop = mc_model_get_real(cfg, 4, "$.output.min_gop");
+    int gop = mc_model_get_int(cfg, 8, "$.output.gop");
+    double last_duration = gop;
+
     jd_var *m3u8 = m3u8_init(cfg, jd_nv(), pl_name);
     parse_previous(m3u8, sf.sn);
     mc_info("Next segment is %s", mc_segname_name(sf.sn));
@@ -233,10 +238,6 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
     ic->flags |= AVFMT_FLAG_IGNDTS;
 
     av_init_packet(&pkt);
-
-    double gop_time = NAN;
-    double min_gop = mc_model_get_real(cfg, 4, "$.output.min_gop");
-    double last_duration = 0;
 
     while (mc_queue_merger_packet_get(qm, &pkt)) {
       mc_debug("HLS got %d (flags=%08x, pts=%llu, dts=%llu, duration=%d)",
