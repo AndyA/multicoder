@@ -23,11 +23,11 @@ PKG_CHECK_MODULES([LIBSWSCALE], [libswscale])
 BT_PROG_CC_WARN
 
 AC_CONFIG_FILES([
+libhls/Makefile
+libhls/t/Makefile
 Makefile
 m4/Makefile
 t/Makefile
-libhls/Makefile
-libhls/t/Makefile
 ])
 
 AC_OUTPUT

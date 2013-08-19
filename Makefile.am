@@ -4,13 +4,15 @@ SUBDIRS = . t libhls
 
 ACLOCAL_AMFLAGS = -I m4
 
+AM_CPPFLAGS = -Ilibhls
+
 LIBAV_CFLAGS = \
 	$(LIBAVCODEC_CFLAGS) $(LIBAVFORMAT_CFLAGS) $(LIBAVUTIL_CFLAGS) $(LIBSWSCALE_CFLAGS)
 
 LIBAV_LDFLAGS = \
 	$(LIBAVCODEC_LIBS) $(LIBAVFORMAT_LIBS) $(LIBAVUTIL_LIBS) $(LIBSWSCALE_LIBS)
 
-lib_LTLIBRARIES = libmulticoder.la
+lib_LTLIBRARIES = libmulticoder.la hls/libhls.la
 
 include_HEADERS = multicoder.h
 
@@ -51,5 +53,9 @@ multivod_LDFLAGS = $(LIBAV_LDFLAGS)
 multivod_LDADD = libmulticoder.la
 
 test: all
+	cd libhls && $(MAKE) test
 	cd t && $(MAKE) test
+
+hls/libhls.la:
+	cd libhls && $(MAKE)
 

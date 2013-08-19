@@ -13,6 +13,8 @@
 #include <libswresample/swresample.h>
 #include <libswscale/swscale.h>
 
+#include "hls.h"
+
 #include "multicoder.h"
 
 static AVStream *add_output(AVFormatContext *oc, AVStream *is) {
