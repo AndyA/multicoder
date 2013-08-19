@@ -153,21 +153,22 @@ static jd_var *make_segment(jd_var *out,
 }
 
 static void cleanup(context *ctx) {
-  jd_var *rq = ctx->retire_queue;
-  if (jd_count(rq) < RETIRE) return;
-
   scope {
-    jd_var *segs = jd_shift(rq, 1, jd_nv());
-    size_t nsegs = jd_count(segs);
-    for (unsigned i = 0; i < nsegs; i++) {
-      jd_var *seg = jd_get_idx(segs, i);
-      if (seg->type == HASH) {
-        jd_var *uri = jd_get_ks(seg, "uri", 0);
-        if (uri) {
-          char *fn = mc_segname_prefix(ctx->segn, uri);
-          mc_debug("Purging %s", fn);
-          if (unlink(fn)) mc_warning("Failed to delete %s: %m", fn);
-          free(fn);
+    jd_var *rq = ctx->retire_queue;
+    while (jd_count(rq) >= RETIRE) {
+      jd_var *segs = jd_nv();
+      jd_shift(rq, 1, segs);
+      size_t nsegs = jd_count(segs);
+      for (unsigned i = 0; i < nsegs; i++) {
+        jd_var *seg = jd_get_idx(segs, i);
+        if (seg->type == HASH) {
+          jd_var *uri = jd_get_ks(seg, "uri", 0);
+          if (uri) {
+            char *fn = mc_segname_prefix(ctx->segn, jd_bytes(uri, NULL));
+            mc_debug("Purging %s", fn);
+            if (unlink(fn)) mc_warning("Failed to delete %s: %m", fn);
+            free(fn);
+          }
         }
       }
     }
