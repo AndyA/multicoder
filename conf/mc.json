@@ -9,6 +9,7 @@
          "enabled" : false,
          "name" : "sd",
          "output" : {
+            "max_time" : 7200,
             "min_gop" : 1,
             "playlist" : "foo/sd.m3u8",
             "segment" : "foo/sd/%08d/%04d.ts"
@@ -28,6 +29,8 @@
          "enabled" : true,
          "name" : "hd",
          "output" : {
+            "max_time" : 7200,
+            "min_gop" : 1,
             "playlist" : "foo/hd.m3u8",
             "segment" : "foo/hd/%08d/%04d.ts"
          },
@@ -42,6 +45,8 @@
          "enabled" : false,
          "name" : "mobile",
          "output" : {
+            "max_time" : 7200,
+            "min_gop" : 1,
             "playlist" : "foo/mobile.m3u8",
             "segment" : "foo/mobile/%08d/%04d.ts"
          },

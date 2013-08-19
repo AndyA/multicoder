@@ -53,6 +53,11 @@ char *mc_dirname(const char *filename) {
   return extract(filename, slash - filename);
 }
 
+int mc_is_file(const char *path) {
+  struct stat st;
+  return !stat(path, &st) && S_ISREG(st.st_mode);
+}
+
 void mc_mkpath(const char *path, mode_t mode) {
   struct stat st;
   if (!stat(path, &st) && S_ISDIR(st.st_mode)) return;

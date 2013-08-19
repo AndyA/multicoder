@@ -16,6 +16,7 @@ extern "C" {
   char *mc_tmp_name(const char *filename);
   char *mc_dirname(const char *filename);
   void mc_mkpath(const char *path, mode_t mode);
+  int mc_is_file(const char *path);
   void mc_mkfilepath(const char *filename, mode_t mode);
   void mc_usleep(uint64_t usec);
 

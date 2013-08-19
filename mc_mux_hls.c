@@ -106,88 +106,158 @@ static void seg_open(seg_file *sf, AVFormatContext *oc) {
   }
 }
 
+static const char *cfg_need(jd_var *cfg, const char *path) {
+  jd_var *v = jd_rv(cfg, path);
+  if (!v) jd_throw("Missing %s", path);
+  return jd_bytes(v, NULL);
+}
+
+static jd_var *m3u8_init(jd_var *m3u8, mc_segname *sn) {
+  hls_m3u8_init(m3u8);
+  char *name = mc_segname_name(sn);
+  if (mc_is_file(name)) {
+    mc_info("Attempting to load existing %s", name);
+    hls_m3u8_load(m3u8, name);
+    /* TODO conditional? */
+    hls_m3u8_push_discontinuity(m3u8);
+  }
+  return m3u8;
+}
+
+static jd_var *make_segment(jd_var *out,
+                            const char *uri,
+                            double duration,
+                            const char *title) {
+  jd_set_hash(out, 4);
+  jd_set_string(jd_lv(out, "$.uri"), uri);
+  jd_set_real(jd_lv(out, "$.EXTINF.duration"), duration);
+  jd_set_string(jd_lv(out, "$.EXTINF.title"), title ? title : "");
+  return out;
+}
+
+static jd_var *m3u8_push_segment(jd_var *m3u8,
+                                 jd_var *cfg,
+                                 mc_segname *sn,
+                                 const char *uri,
+                                 double duration,
+                                 const char *title) {
+  scope {
+    jd_var *seg = make_segment(jd_nv(), uri, duration, title);
+    hls_m3u8_push_segment(m3u8, seg);
+    /* TODO rotate */
+
+    hls_m3u8_save(m3u8, mc_segname_temp(sn));
+    mc_segname_rename(sn);
+    mc_debug("Updated %s", mc_segname_name(sn));
+    mc_segname_inc(sn);
+  }
+}
+
+static void parse_previous(jd_var *m3u8, mc_segname *sn) {
+  jd_var *last = hls_m3u8_last_seg(m3u8);
+  if (last) {
+    jd_var *uri = jd_get_ks(last, "uri", 0);
+    if (uri) mc_segname_parse(sn, jd_bytes(uri, NULL));
+  }
+}
+
 void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
-  AVFormatContext *oc;
-  AVPacket pkt;
-  AVStream *vs = NULL, *as = NULL;
-  seg_file sf;
-  int vi = -1;
+  scope {
+    AVFormatContext *oc;
+    AVPacket pkt;
+    AVStream *vs = NULL, *as = NULL;
+    seg_file sf;
+    int vi = -1;
 
-  jd_var *seg_name = jd_rv(cfg, "$.output.segment");
-  if (!seg_name) jd_throw("Missing segment field");
+    sf.open = 0;
+    sf.sn = mc_segname_new(cfg_need(cfg, "$.output.segment"));
 
-  sf.open = 0;
-  sf.sn = mc_segname_new(jd_bytes(seg_name, NULL));
+    mc_segname *pl_name = mc_segname_new(cfg_need(cfg, "$.output.playlist"));
+    jd_var *m3u8 = m3u8_init(jd_nv(), pl_name);
+    parse_previous(m3u8, sf.sn);
 
-  if (oc = avformat_alloc_context(), !oc)
-    jd_throw("Can't allocate output context");
+    if (oc = avformat_alloc_context(), !oc)
+      jd_throw("Can't allocate output context");
 
-  if (oc->oformat = av_guess_format("mpegts", NULL, NULL), !oc->oformat)
-    jd_throw("Can't find mpegts multiplexer");
+    if (oc->oformat = av_guess_format("mpegts", NULL, NULL), !oc->oformat)
+      jd_throw("Can't find mpegts multiplexer");
 
-  for (unsigned i = 0; i < ic->nb_streams; i++) {
-    AVStream *is = ic->streams[i];
-    is->discard = AVDISCARD_NONE;
+    for (unsigned i = 0; i < ic->nb_streams; i++) {
+      AVStream *is = ic->streams[i];
+      is->discard = AVDISCARD_NONE;
 
-    if (!vs && is->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
-      vs = add_output(oc, is);
-      vi = i;
-      continue;
-    }
-
-    if (!as && is->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
-      as = add_output(oc, is);
-      continue;
-    }
-
-    is->discard = AVDISCARD_ALL;
-  }
-
-  ic->flags |= AVFMT_FLAG_IGNDTS;
-
-  av_init_packet(&pkt);
-
-  double gop_time = NAN;
-  double min_gop = mc_model_get_real(cfg, 4, "$.output.min_gop");
-
-  while (mc_queue_merger_packet_get(qm, &pkt)) {
-    mc_debug("HLS got %d (flags=%08x, pts=%llu, dts=%llu, duration=%d)",
-             pkt.stream_index, pkt.flags,
-             (unsigned long long) pkt.pts,
-             (unsigned long long) pkt.dts,
-             pkt.duration);
-
-    if ((pkt.stream_index == vi && (pkt.flags & AV_PKT_FLAG_KEY)) || vi == -1) {
-      double st = pkt.pts * av_q2d((pkt.stream_index == vi ? vs : as)->time_base);
-      if (isnan(gop_time)) {
-        gop_time = st;
+      if (!vs && is->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+        vs = add_output(oc, is);
+        vi = i;
+        continue;
       }
-      else if (st - gop_time >= min_gop) {
-        seg_close(&sf, oc);
-        gop_time = st;
+
+      if (!as && is->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
+        as = add_output(oc, is);
+        continue;
       }
+
+      is->discard = AVDISCARD_ALL;
     }
 
-    seg_open(&sf, oc);
+    ic->flags |= AVFMT_FLAG_IGNDTS;
 
-    if (av_interleaved_write_frame(oc, &pkt))
-      jd_throw("Can't write frame");
+    av_init_packet(&pkt);
 
-    av_free_packet(&pkt);
+    double gop_time = NAN;
+    double min_gop = mc_model_get_real(cfg, 4, "$.output.min_gop");
+    double vtime = 0, atime = 0;
+
+    while (mc_queue_merger_packet_get(qm, &pkt)) {
+      mc_debug("HLS got %d (flags=%08x, pts=%llu, dts=%llu, duration=%d)",
+               pkt.stream_index, pkt.flags,
+               (unsigned long long) pkt.pts,
+               (unsigned long long) pkt.dts,
+               pkt.duration);
+
+      double duration =
+        pkt.duration * av_q2d((pkt.stream_index == vi ? vs : as)->time_base);
+      if (pkt.stream_index == vi)
+        vtime += duration;
+      else
+        atime += duration;
+
+      if ((pkt.stream_index == vi && (pkt.flags & AV_PKT_FLAG_KEY)) || vi == -1) {
+        double st = pkt.pts * av_q2d((pkt.stream_index == vi ? vs : as)->time_base);
+        if (isnan(gop_time)) {
+          gop_time = st;
+        }
+        else if (st - gop_time >= min_gop) {
+          seg_close(&sf, oc);
+          m3u8_push_segment(m3u8, cfg, pl_name, mc_segname_name(sf.sn), vtime, "");
+          atime -= vtime;
+          vtime = 0;
+          gop_time = st;
+        }
+      }
+
+      seg_open(&sf, oc);
+
+      if (av_interleaved_write_frame(oc, &pkt))
+        jd_throw("Can't write frame");
+
+      av_free_packet(&pkt);
+    }
+
+    seg_close(&sf, oc);
+    m3u8_push_segment(m3u8, cfg, pl_name, mc_segname_name(sf.sn), vtime, "");
+
+    for (unsigned i = 0; i < oc->nb_streams; i++) {
+      av_freep(&oc->streams[i]->codec);
+      av_freep(&oc->streams[i]);
+    }
+
+    av_free(oc);
+
+    mc_segname_free(sf.sn);
+
+    mc_debug("HLS EOF");
   }
-
-  seg_close(&sf, oc);
-
-  for (unsigned i = 0; i < oc->nb_streams; i++) {
-    av_freep(&oc->streams[i]->codec);
-    av_freep(&oc->streams[i]);
-  }
-
-  av_free(oc);
-
-  mc_segname_free(sf.sn);
-
-  mc_debug("HLS EOF");
 }
 
 /* vim:ts=2:sw=2:sts=2:et:ft=c

@@ -12,7 +12,7 @@ LIBAV_CFLAGS = \
 LIBAV_LDFLAGS = \
 	$(LIBAVCODEC_LIBS) $(LIBAVFORMAT_LIBS) $(LIBAVUTIL_LIBS) $(LIBSWSCALE_LIBS)
 
-lib_LTLIBRARIES = libmulticoder.la hls/libhls.la
+lib_LTLIBRARIES = libmulticoder.la
 
 include_HEADERS = multicoder.h
 
@@ -37,20 +37,18 @@ libmulticoder_la_SOURCES = \
 	mc_util.h \
 	multicoder.h
 
-LDADD = libhls/libhls.la
-
 libmulticoder_la_CFLAGS = $(LIBAV_CFLAGS)
 libmulticoder_la_LDFLAGS = -avoid-version $(LIBAV_LDFLAGS)
 
 multicoder_SOURCES = multicoder.c multicoder.h
 multicoder_CFLAGS = $(LIBAV_CFLAGS)
 multicoder_LDFLAGS = $(LIBAV_LDFLAGS)
-multicoder_LDADD = libmulticoder.la
+multicoder_LDADD = libmulticoder.la libhls/libhls.la
 
 multivod_SOURCES = multivod.c multicoder.h
 multivod_CFLAGS = $(LIBAV_CFLAGS)
 multivod_LDFLAGS = $(LIBAV_LDFLAGS)
-multivod_LDADD = libmulticoder.la
+multivod_LDADD = libmulticoder.la libhls/libhls.la
 
 test: all
 	cd libhls && $(MAKE) test
