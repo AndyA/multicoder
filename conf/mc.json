@@ -12,8 +12,9 @@
             "gop" : 4,
             "min_gop" : 1,
             "min_time" : 7200,
-            "playlist" : "foo/sd.m3u8",
-            "segment" : "foo/sd/%08d/%04d.ts"
+            "playlist" : "sd.m3u8",
+            "prefix" : "foo",
+            "segment" : "sd/%08d/%04d.ts"
          },
          "video" : {
             "bit_rate" : 800000,
@@ -33,8 +34,9 @@
             "gop" : 4,
             "min_gop" : 1,
             "min_time" : 7200,
-            "playlist" : "foo/hd.m3u8",
-            "segment" : "foo/hd/%08d/%04d.ts"
+            "playlist" : "hd.m3u8",
+            "prefix" : "foo",
+            "segment" : "hd/%08d/%04d.ts"
          },
          "video" : {
             "type" : "direct"
@@ -50,8 +52,9 @@
             "gop" : 4,
             "min_gop" : 1,
             "min_time" : 7200,
-            "playlist" : "foo/mobile.m3u8",
-            "segment" : "foo/mobile/%08d/%04d.ts"
+            "playlist" : "mobile.m3u8",
+            "prefix" : "foo",
+            "segment" : "mobile/%08d/%04d.ts"
          },
          "video" : {
             "bit_rate" : 380000,

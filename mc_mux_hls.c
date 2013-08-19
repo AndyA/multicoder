@@ -178,7 +178,7 @@ static void push_segment(seg_file *sf,
                          jd_var *cfg,
                          mc_segname *pl_name,
                          double duration) {
-  char *name = mc_strdup(mc_segname_name(sf->sn));
+  char *name = mc_strdup(mc_segname_uri(sf->sn));
   seg_close(sf, oc);
   m3u8_push_segment(sf, m3u8, cfg, pl_name, name, duration, "");
   free(name);
@@ -192,11 +192,16 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
     seg_file sf;
     int vi = -1;
 
+    char *prefix = cfg_need(cfg, "$.output.prefix");
     sf.open = 0;
-    sf.sn = mc_segname_new(cfg_need(cfg, "$.output.segment"));
+    sf.sn = mc_segname_new_prefixed(
+      cfg_need(cfg, "$.output.segment"), prefix);
+
     sf.min_time = mc_model_get_int(cfg, 3600, "$.output.min_time");
 
-    mc_segname *pl_name = mc_segname_new(cfg_need(cfg, "$.output.playlist"));
+    mc_segname *pl_name = mc_segname_new_prefixed(
+      cfg_need(cfg, "$.output.playlist"), prefix);
+
     jd_var *m3u8 = m3u8_init(cfg, jd_nv(), pl_name);
     parse_previous(m3u8, sf.sn);
     mc_info("Next segment is %s", mc_segname_name(sf.sn));
