@@ -76,6 +76,7 @@ static AVStream *add_output(AVFormatContext *oc, AVStream *is) {
 typedef struct {
   mc_segname *sn;
   int open;
+  jd_int min_time;
 } seg_file;
 
 static void seg_close(seg_file *sf, AVFormatContext *oc) {
@@ -112,7 +113,7 @@ static const char *cfg_need(jd_var *cfg, const char *path) {
   return jd_bytes(v, NULL);
 }
 
-static jd_var *m3u8_init(jd_var *m3u8, mc_segname *sn) {
+static jd_var *m3u8_init(jd_var *cfg, jd_var *m3u8, mc_segname *sn) {
   hls_m3u8_init(m3u8);
   char *name = mc_segname_name(sn);
   if (mc_is_file(name)) {
@@ -121,6 +122,15 @@ static jd_var *m3u8_init(jd_var *m3u8, mc_segname *sn) {
     /* TODO conditional? */
     hls_m3u8_push_discontinuity(m3u8);
   }
+
+  jd_var *meta = hls_m3u8_meta(m3u8);
+  jd_set_int(jd_get_ks(meta, "EXT-X-TARGETDURATION", 1),
+             mc_model_get_int(cfg, 8, "$.output.gop"));
+  jd_set_string(jd_get_ks(meta, "EXT-X-PLAYLIST-TYPE", 1), "EVENT");
+  jd_set_int(jd_get_ks(meta, "EXT-X-VERSION", 1), 3);
+
+  hls_m3u8_set_closed(m3u8, 0);
+
   return m3u8;
 }
 
@@ -135,7 +145,8 @@ static jd_var *make_segment(jd_var *out,
   return out;
 }
 
-static jd_var *m3u8_push_segment(jd_var *m3u8,
+static jd_var *m3u8_push_segment(seg_file *sf,
+                                 jd_var *m3u8,
                                  jd_var *cfg,
                                  mc_segname *sn,
                                  const char *uri,
@@ -144,8 +155,7 @@ static jd_var *m3u8_push_segment(jd_var *m3u8,
   scope {
     jd_var *seg = make_segment(jd_nv(), uri, duration, title);
     hls_m3u8_push_segment(m3u8, seg);
-    /* TODO rotate */
-
+    hls_m3u8_expire(m3u8, sf->min_time);
     hls_m3u8_save(m3u8, mc_segname_temp(sn));
     mc_segname_rename(sn);
     mc_debug("Updated %s", mc_segname_name(sn));
@@ -170,7 +180,7 @@ static void push_segment(seg_file *sf,
                          double duration) {
   char *name = mc_strdup(mc_segname_name(sf->sn));
   seg_close(sf, oc);
-  m3u8_push_segment(m3u8, cfg, pl_name, name, duration, "");
+  m3u8_push_segment(sf, m3u8, cfg, pl_name, name, duration, "");
   free(name);
 }
 
@@ -184,9 +194,10 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
 
     sf.open = 0;
     sf.sn = mc_segname_new(cfg_need(cfg, "$.output.segment"));
+    sf.min_time = mc_model_get_int(cfg, 3600, "$.output.min_time");
 
     mc_segname *pl_name = mc_segname_new(cfg_need(cfg, "$.output.playlist"));
-    jd_var *m3u8 = m3u8_init(jd_nv(), pl_name);
+    jd_var *m3u8 = m3u8_init(cfg, jd_nv(), pl_name);
     parse_previous(m3u8, sf.sn);
     mc_info("Next segment is %s", mc_segname_name(sf.sn));
 
