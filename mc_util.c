@@ -47,6 +47,10 @@ static char *extract(const char *buf, size_t len) {
   return out;
 }
 
+char *mc_strdup(const char *in) {
+  return in ? extract(in, strlen(in)) : NULL;
+}
+
 char *mc_dirname(const char *filename) {
   char *slash = strrchr(filename, '/');
   if (!slash || slash == filename) return NULL;
