@@ -157,8 +157,21 @@ static void parse_previous(jd_var *m3u8, mc_segname *sn) {
   jd_var *last = hls_m3u8_last_seg(m3u8);
   if (last) {
     jd_var *uri = jd_get_ks(last, "uri", 0);
-    if (uri) mc_segname_parse(sn, jd_bytes(uri, NULL));
+    if (uri && mc_segname_parse(sn, jd_bytes(uri, NULL)))
+      mc_segname_inc(sn);
   }
+}
+
+static void push_segment(seg_file *sf,
+                         AVFormatContext *oc,
+                         jd_var *m3u8,
+                         jd_var *cfg,
+                         mc_segname *pl_name,
+                         double duration) {
+  char *name = mc_strdup(mc_segname_name(sf->sn));
+  seg_close(sf, oc);
+  m3u8_push_segment(m3u8, cfg, pl_name, name, duration, "");
+  free(name);
 }
 
 void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
@@ -175,6 +188,7 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
     mc_segname *pl_name = mc_segname_new(cfg_need(cfg, "$.output.playlist"));
     jd_var *m3u8 = m3u8_init(jd_nv(), pl_name);
     parse_previous(m3u8, sf.sn);
+    mc_info("Next segment is %s", mc_segname_name(sf.sn));
 
     if (oc = avformat_alloc_context(), !oc)
       jd_throw("Can't allocate output context");
@@ -206,7 +220,7 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
 
     double gop_time = NAN;
     double min_gop = mc_model_get_real(cfg, 4, "$.output.min_gop");
-    double vtime = 0, atime = 0;
+    double last_duration = 0;
 
     while (mc_queue_merger_packet_get(qm, &pkt)) {
       mc_debug("HLS got %d (flags=%08x, pts=%llu, dts=%llu, duration=%d)",
@@ -215,23 +229,14 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
                (unsigned long long) pkt.dts,
                pkt.duration);
 
-      double duration =
-        pkt.duration * av_q2d((pkt.stream_index == vi ? vs : as)->time_base);
-      if (pkt.stream_index == vi)
-        vtime += duration;
-      else
-        atime += duration;
-
       if ((pkt.stream_index == vi && (pkt.flags & AV_PKT_FLAG_KEY)) || vi == -1) {
         double st = pkt.pts * av_q2d((pkt.stream_index == vi ? vs : as)->time_base);
         if (isnan(gop_time)) {
           gop_time = st;
         }
         else if (st - gop_time >= min_gop) {
-          seg_close(&sf, oc);
-          m3u8_push_segment(m3u8, cfg, pl_name, mc_segname_name(sf.sn), vtime, "");
-          atime -= vtime;
-          vtime = 0;
+          last_duration = st - gop_time;
+          push_segment(&sf, oc, m3u8, cfg, pl_name, last_duration);
           gop_time = st;
         }
       }
@@ -244,8 +249,7 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
       av_free_packet(&pkt);
     }
 
-    seg_close(&sf, oc);
-    m3u8_push_segment(m3u8, cfg, pl_name, mc_segname_name(sf.sn), vtime, "");
+    push_segment(&sf, oc, m3u8, cfg, pl_name, last_duration);
 
     for (unsigned i = 0; i < oc->nb_streams; i++) {
       av_freep(&oc->streams[i]->codec);
