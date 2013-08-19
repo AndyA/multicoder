@@ -149,9 +149,13 @@ char *mc_segname_uri(mc_segname *sn) {
   return sn->uri;
 }
 
+char *mc_segname_prefix(mc_segname *sn, const char *name) {
+  return mc_prefix(mc_segname_uri(sn), sn->prefix);
+}
+
 char *mc_segname_name(mc_segname *sn) {
   if (!sn->cur_name)
-    sn->cur_name = mc_prefix(mc_segname_uri(sn), sn->prefix);
+    sn->cur_name = mc_segname_prefix(sn, mc_segname_uri(sn));
   return sn->cur_name;
 }
 

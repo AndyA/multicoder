@@ -38,6 +38,7 @@ extern "C" {
   char *mc_segname_name(mc_segname *sn);
   char *mc_segname_temp(mc_segname *sn);
   void mc_segname_rename(mc_segname *sn);
+  char *mc_segname_prefix(mc_segname *sn, const char *name);
 
 #ifdef __cplusplus
 }
