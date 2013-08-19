@@ -150,7 +150,7 @@ char *mc_segname_uri(mc_segname *sn) {
 }
 
 char *mc_segname_prefix(mc_segname *sn, const char *name) {
-  return mc_prefix(mc_segname_uri(sn), sn->prefix);
+  return mc_prefix(name, sn->prefix);
 }
 
 char *mc_segname_name(mc_segname *sn) {
