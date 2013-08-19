@@ -1,5 +1,8 @@
 /* util.t */
 
+#include <string.h>
+#include <stdlib.h>
+
 #include "framework.h"
 #include "tap.h"
 
