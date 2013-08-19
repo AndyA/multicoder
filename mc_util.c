@@ -51,6 +51,18 @@ char *mc_strdup(const char *in) {
   return in ? extract(in, strlen(in)) : NULL;
 }
 
+char *mc_prefix(const char *name, const char *prefix) {
+  if (!prefix || !*prefix) return mc_strdup(name);
+  size_t len = strlen(prefix);
+  size_t plen = len;
+  if (prefix[plen - 1] != '/') plen++;
+  char *fn = mc_alloc(plen + strlen(name) + 1);
+  memcpy(fn, prefix, len);
+  if (len != plen) fn[len] = '/';
+  strcpy(fn + plen, name);
+  return fn;
+}
+
 char *mc_dirname(const char *filename) {
   char *slash = strrchr(filename, '/');
   if (!slash || slash == filename) return NULL;
