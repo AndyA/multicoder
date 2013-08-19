@@ -3,6 +3,7 @@
 #include <jd_pretty.h>
 #include <math.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include <libavformat/avformat.h>
 #include <libavutil/imgutils.h>
@@ -16,6 +17,18 @@
 #include "hls.h"
 
 #include "multicoder.h"
+
+#define RETIRE 4
+
+typedef struct {
+  jd_var *cfg;
+  jd_var *m3u8;
+  mc_segname *segn;
+  mc_segname *pln;
+  int open;
+  jd_int min_time;
+  jd_var *retire_queue;
+} context;
 
 static AVStream *add_output(AVFormatContext *oc, AVStream *is) {
 
@@ -73,28 +86,22 @@ static AVStream *add_output(AVFormatContext *oc, AVStream *is) {
   return os;
 }
 
-typedef struct {
-  mc_segname *sn;
-  int open;
-  jd_int min_time;
-} seg_file;
-
-static void seg_close(seg_file *sf, AVFormatContext *oc) {
-  if (sf->open) {
+static void seg_close(context *ctx, AVFormatContext *oc) {
+  if (ctx->open) {
     av_write_trailer(oc);
     avio_flush(oc->pb);
     avio_close(oc->pb);
-    sf->open = 0;
+    ctx->open = 0;
 
-    mc_segname_rename(sf->sn);
-    mc_segname_inc(sf->sn);
+    mc_segname_rename(ctx->segn);
+    mc_segname_inc(ctx->segn);
   }
 }
 
-static void seg_open(seg_file *sf, AVFormatContext *oc) {
-  if (!sf->open) {
-    const char *name = mc_segname_name(sf->sn);
-    const char *temp = mc_segname_temp(sf->sn);
+static void seg_open(context *ctx, AVFormatContext *oc) {
+  if (!ctx->open) {
+    const char *name = mc_segname_name(ctx->segn);
+    const char *temp = mc_segname_temp(ctx->segn);
 
     mc_debug("writing %s (as %s)", name, temp);
     mc_mkfilepath(temp, 0777);
@@ -103,7 +110,7 @@ static void seg_open(seg_file *sf, AVFormatContext *oc) {
       jd_throw("Can't write %s: %m", temp);
     if (avformat_write_header(oc, NULL))
       jd_throw("Can't write header");
-    sf->open = 1;
+    ctx->open = 1;
   }
 }
 
@@ -113,25 +120,25 @@ static const char *cfg_need(jd_var *cfg, const char *path) {
   return jd_bytes(v, NULL);
 }
 
-static jd_var *m3u8_init(jd_var *cfg, jd_var *m3u8, mc_segname *sn) {
-  hls_m3u8_init(m3u8);
-  char *name = mc_segname_name(sn);
+static jd_var *m3u8_init(context *ctx) {
+  hls_m3u8_init(ctx->m3u8);
+  char *name = mc_segname_name(ctx->pln);
   if (mc_is_file(name)) {
     mc_info("Attempting to load existing %s", name);
-    hls_m3u8_load(m3u8, name);
+    hls_m3u8_load(ctx->m3u8, name);
     /* TODO conditional? */
-    hls_m3u8_push_discontinuity(m3u8);
+    hls_m3u8_push_discontinuity(ctx->m3u8);
   }
 
-  jd_var *meta = hls_m3u8_meta(m3u8);
+  jd_var *meta = hls_m3u8_meta(ctx->m3u8);
   jd_set_int(jd_get_ks(meta, "EXT-X-TARGETDURATION", 1),
-             mc_model_get_int(cfg, 8, "$.output.gop"));
+             mc_model_get_int(ctx->cfg, 8, "$.output.gop"));
   jd_set_string(jd_get_ks(meta, "EXT-X-PLAYLIST-TYPE", 1), "EVENT");
   jd_set_int(jd_get_ks(meta, "EXT-X-VERSION", 1), 3);
 
-  hls_m3u8_set_closed(m3u8, 0);
+  hls_m3u8_set_closed(ctx->m3u8, 0);
 
-  return m3u8;
+  return ctx->m3u8;
 }
 
 static jd_var *make_segment(jd_var *out,
@@ -145,42 +152,60 @@ static jd_var *make_segment(jd_var *out,
   return out;
 }
 
-static jd_var *m3u8_push_segment(seg_file *sf,
-                                 jd_var *m3u8,
-                                 jd_var *cfg,
-                                 mc_segname *sn,
-                                 const char *uri,
-                                 double duration,
-                                 const char *title) {
+static void cleanup(context *ctx) {
+  jd_var *rq = ctx->retire_queue;
+  if (jd_count(rq) < RETIRE) return;
+
+  scope {
+    jd_var *segs = jd_shift(rq, 1, jd_nv());
+    size_t nsegs = jd_count(segs);
+    for (unsigned i = 0; i < nsegs; i++) {
+      jd_var *seg = jd_get_idx(segs, i);
+      if (seg->type == HASH) {
+        jd_var *uri = jd_get_ks(seg, "uri", 0);
+        if (uri) {
+          char *fn = mc_segname_prefix(ctx->segn, uri);
+          mc_debug("Purging %s", fn);
+          if (unlink(fn)) mc_warning("Failed to delete %s: %m", fn);
+          free(fn);
+        }
+      }
+    }
+  }
+}
+
+static void m3u8_push_segment(context *ctx,
+                              const char *uri,
+                              double duration,
+                              const char *title) {
   scope {
     jd_var *seg = make_segment(jd_nv(), uri, duration, title);
-    hls_m3u8_push_segment(m3u8, seg);
-    hls_m3u8_expire(m3u8, sf->min_time);
-    hls_m3u8_save(m3u8, mc_segname_temp(sn));
-    mc_segname_rename(sn);
-    mc_debug("Updated %s", mc_segname_name(sn));
-    mc_segname_inc(sn);
+    hls_m3u8_push_segment(ctx->m3u8, seg);
+    hls_m3u8_expire(ctx->m3u8, ctx->min_time);
+    jd_assign(jd_push(ctx->retire_queue, 1), hls_m3u8_retired(ctx->m3u8));
+    cleanup(ctx);
+    hls_m3u8_save(ctx->m3u8, mc_segname_temp(ctx->pln));
+    mc_segname_rename(ctx->pln);
+    mc_debug("Updated %s", mc_segname_name(ctx->pln));
+    mc_segname_inc(ctx->pln);
   }
 }
 
-static void parse_previous(jd_var *m3u8, mc_segname *sn) {
-  jd_var *last = hls_m3u8_last_seg(m3u8);
+static void parse_previous(context *ctx) {
+  jd_var *last = hls_m3u8_last_seg(ctx->m3u8);
   if (last) {
     jd_var *uri = jd_get_ks(last, "uri", 0);
-    if (uri && mc_segname_parse(sn, jd_bytes(uri, NULL)))
-      mc_segname_inc(sn);
+    if (uri && mc_segname_parse(ctx->segn, jd_bytes(uri, NULL)))
+      mc_segname_inc(ctx->segn);
   }
 }
 
-static void push_segment(seg_file *sf,
+static void push_segment(context *ctx,
                          AVFormatContext *oc,
-                         jd_var *m3u8,
-                         jd_var *cfg,
-                         mc_segname *pl_name,
                          double duration) {
-  char *name = mc_strdup(mc_segname_uri(sf->sn));
-  seg_close(sf, oc);
-  m3u8_push_segment(sf, m3u8, cfg, pl_name, name, duration, "");
+  char *name = mc_strdup(mc_segname_uri(ctx->segn));
+  seg_close(ctx, oc);
+  m3u8_push_segment(ctx, name, duration, "");
   free(name);
 }
 
@@ -189,27 +214,28 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
     AVFormatContext *oc;
     AVPacket pkt;
     AVStream *vs = NULL, *as = NULL;
-    seg_file sf;
+    context ctx;
     int vi = -1;
 
-    char *prefix = cfg_need(cfg, "$.output.prefix");
-    sf.open = 0;
-    sf.sn = mc_segname_new_prefixed(
-      cfg_need(cfg, "$.output.segment"), prefix);
+    const char *prefix = cfg_need(cfg, "$.output.prefix");
 
-    sf.min_time = mc_model_get_int(cfg, 3600, "$.output.min_time");
-
-    mc_segname *pl_name = mc_segname_new_prefixed(
-      cfg_need(cfg, "$.output.playlist"), prefix);
-
-    double gop_time = NAN;
     double min_gop = mc_model_get_real(cfg, 4, "$.output.min_gop");
     int gop = mc_model_get_int(cfg, 8, "$.output.gop");
     double last_duration = gop;
+    double gop_time = NAN;
 
-    jd_var *m3u8 = m3u8_init(cfg, jd_nv(), pl_name);
-    parse_previous(m3u8, sf.sn);
-    mc_info("Next segment is %s", mc_segname_name(sf.sn));
+    ctx.cfg = cfg;
+    ctx.open = 0;
+    ctx.segn = mc_segname_new_prefixed(cfg_need(cfg, "$.output.segment"), prefix);
+    ctx.pln = mc_segname_new_prefixed(cfg_need(cfg, "$.output.playlist"), prefix);
+    ctx.retire_queue = jd_nav(RETIRE);
+    ctx.min_time = mc_model_get_int(cfg, 3600, "$.output.min_time");
+    ctx.m3u8 = jd_nv();
+
+    m3u8_init(&ctx);
+    parse_previous(&ctx);
+
+    mc_info("Next segment is %s", mc_segname_name(ctx.segn));
 
     if (oc = avformat_alloc_context(), !oc)
       jd_throw("Can't allocate output context");
@@ -253,12 +279,12 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
         }
         else if (st - gop_time >= min_gop) {
           last_duration = st - gop_time;
-          push_segment(&sf, oc, m3u8, cfg, pl_name, last_duration);
+          push_segment(&ctx, oc, last_duration);
           gop_time = st;
         }
       }
 
-      seg_open(&sf, oc);
+      seg_open(&ctx, oc);
 
       if (av_interleaved_write_frame(oc, &pkt))
         jd_throw("Can't write frame");
@@ -266,7 +292,7 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
       av_free_packet(&pkt);
     }
 
-    push_segment(&sf, oc, m3u8, cfg, pl_name, last_duration);
+    push_segment(&ctx, oc, last_duration);
 
     for (unsigned i = 0; i < oc->nb_streams; i++) {
       av_freep(&oc->streams[i]->codec);
@@ -275,7 +301,8 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
 
     av_free(oc);
 
-    mc_segname_free(sf.sn);
+    mc_segname_free(ctx.segn);
+    mc_segname_free(ctx.pln);
 
     mc_debug("HLS EOF");
   }
