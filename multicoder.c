@@ -63,6 +63,9 @@ int main(int argc, char *argv[]) {
 
     jd_var *cfg = mc_model_load_file(jd_nv(), argv[1]);
 
+    mc_log_level = mc_log_decode_level(
+      mc_model_get_str(cfg, "INFO", "$.global.log_level"));
+
     if (avformat_open_input(&ic, argv[2], NULL, NULL) < 0)
       jd_throw("Can't open %s", argv[2]);
 
@@ -76,6 +79,7 @@ int main(int argc, char *argv[]) {
 
     mc_queue *haq = mc_queue_new(100);
     mc_queue *hvq = mc_queue_new(100);
+
 
     hls.cfg = mc_model_get(cfg, NULL, "$.streams.1");
     mc_debug("hls.cfg = %lJ", hls.cfg);

@@ -47,6 +47,12 @@ static void ts(char *buf, size_t sz) {
   snprintf(buf + len, sz - len, ".%06lu", (unsigned long) tv.tv_usec);
 }
 
+unsigned mc_log_decode_level(const char *name) {
+  for (unsigned i = 0; i < MAXLEVEL; i++)
+    if (!strcmp(name, lvl[i])) return i;
+  jd_throw("Bad log level: %s", name);
+}
+
 static void mc_log(unsigned level, const char *msg, va_list ap) {
   if (level <= mc_log_level) scope {
     const char *col_on = mc_log_colour ? lvl_col[level] : "";

@@ -1,4 +1,7 @@
 {
+   "global" : {
+      "log_level" : "INFO"
+   },
    "streams" : [
       {
          "audio" : {
