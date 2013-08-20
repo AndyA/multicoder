@@ -76,8 +76,7 @@ int mc_is_file(const char *path) {
 }
 
 void mc_mkpath(const char *path, mode_t mode) {
-  struct stat st;
-  if (!stat(path, &st) && S_ISDIR(st.st_mode)) return;
+  if (mkdir(path, mode) == 0 || errno == EEXIST) return;
   char *parent = mc_dirname(path);
   if (parent) {
     mc_mkpath(parent, mode);
