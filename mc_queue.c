@@ -115,7 +115,7 @@ static void queue_put(mc_queue *q, put_func pf, void *ctx) {
 static void queue_multi_put(mc_queue *q, put_func pf, void *ctx) {
   mc_queue *nq = q;
   do {
-    queue_put(q, pf, ctx);
+    queue_put(nq, pf, ctx);
     nq = nq->pnext;
   }
   while (nq != q);
