@@ -71,13 +71,13 @@ extern "C" {
   void mc_queue_merger_empty(mc_queue_merger *qm);
   void mc_queue_merger_free(mc_queue_merger *qm);
 
+  void mc_queue_only_packet_put(mc_queue *q, AVPacket *pkt);
   void mc_queue_packet_put(mc_queue *q, AVPacket *pkt);
-  void mc_queue_multi_packet_put(mc_queue *q, AVPacket *pkt);
   int mc_queue_packet_get(mc_queue *q, AVPacket *pkt);
   int mc_queue_merger_packet_get(mc_queue_merger *qm, AVPacket *pkt);
 
+  void mc_queue_only_frame_put(mc_queue *q, AVFrame *frame);
   void mc_queue_frame_put(mc_queue *q, AVFrame *frame);
-  void mc_queue_multi_frame_put(mc_queue *q, AVFrame *frame);
   int mc_queue_frame_get(mc_queue *q, AVFrame *frame);
   int mc_queue_merger_frame_get(mc_queue_merger *qm, AVFrame *frame);
 

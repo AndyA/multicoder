@@ -32,7 +32,7 @@ static void test_non_full(void) {
     if (!ok(q->used == 0, "try %d: q->used == 0 (before)", t))
       diag("q->used = %d", q->used);
     for (unsigned i = 0; i < 5; i++)
-      mc_queue_packet_put(q, &pkt);
+      mc_queue_only_packet_put(q, &pkt);
 
     if (!ok(q->used == 5, "try %d: q->used == 5 (during)", t))
       diag("q->used = %d", q->used);
@@ -59,7 +59,7 @@ static void test_multi(void) {
   mc_queue_hook(head, q2);
 
   for (unsigned i = 0; i < 5; i++)
-    mc_queue_multi_packet_put(head, &pkt);
+    mc_queue_packet_put(head, &pkt);
 
   ok(!mc_queue_peek(head), "nothing in head");
 

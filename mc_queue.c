@@ -298,11 +298,11 @@ static void get_packet(mc_queue *q, mc_queue_entry *qe, void *ctx) {
 }
 
 
-void mc_queue_packet_put(mc_queue *q, AVPacket *pkt) {
+void mc_queue_only_packet_put(mc_queue *q, AVPacket *pkt) {
   queue_put(q, put_packet, pkt);
 }
 
-void mc_queue_multi_packet_put(mc_queue *q, AVPacket *pkt) {
+void mc_queue_packet_put(mc_queue *q, AVPacket *pkt) {
   queue_multi_put(q, put_packet, pkt);
 }
 
@@ -332,11 +332,11 @@ static void get_frame(mc_queue *q, mc_queue_entry *qe, void *ctx) {
   *frame = qe->d.frame;
 }
 
-void mc_queue_frame_put(mc_queue *q, AVFrame *frame) {
+void mc_queue_only_frame_put(mc_queue *q, AVFrame *frame) {
   queue_put(q, put_frame, frame);
 }
 
-void mc_queue_multi_frame_put(mc_queue *q, AVFrame *frame) {
+void mc_queue_frame_put(mc_queue *q, AVFrame *frame) {
   queue_multi_put(q, put_frame, frame);
 }
 
