@@ -113,5 +113,22 @@ void mc_usleep(uint64_t usec) {
   pthread_mutex_unlock(&wait_mutex);
 }
 
+jd_var *mc_hash_merge(jd_var *out, jd_var *a, jd_var *b) {
+  if (a == NULL && b == NULL) jd_throw("Can't merge two nulls");
+  if (b == NULL) return jd_assign(out, a);
+  if (a == NULL || a->type != HASH || b->type != HASH) return jd_assign(out, b);
+
+  scope {
+    jd_clone(out, a, 0);
+    jd_var *keys = jd_keys(jd_nv(), b);
+    unsigned kc = jd_count(keys);
+    for (unsigned i = 0; i < kc; i++) {
+      jd_var *key = jd_get_idx(keys, i);
+      mc_hash_merge(jd_get_key(out, key, 1), jd_get_key(a, key, 0), jd_get_key(b, key, 0));
+    }
+  }
+  return out;
+}
+
 /* vim:ts=2:sw=2:sts=2:et:ft=c
  */

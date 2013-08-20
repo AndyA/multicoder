@@ -7,6 +7,7 @@
 extern "C" {
 #endif
 
+#include <jd_pretty.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -21,6 +22,9 @@ extern "C" {
   int mc_is_file(const char *path);
   void mc_mkfilepath(const char *filename, mode_t mode);
   void mc_usleep(uint64_t usec);
+
+  /* jd extras - for want of a better home */
+  jd_var *mc_hash_merge(jd_var *out, jd_var *a, jd_var *b);
 
 #ifdef __cplusplus
 }
