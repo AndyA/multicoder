@@ -81,6 +81,12 @@ static void queue_put(mc_queue *q, put_func pf, void *ctx) {
 
   pthread_mutex_lock(&q->mutex);
 
+  /* A zero sized queue is a dummy - used as the head of a multi-queue set */
+  if (!q->max_size) {
+    pthread_mutex_unlock(&q->mutex);
+    return;
+  }
+
   while (q->used == q->max_size)
     pthread_cond_wait(&q->can_put, &q->mutex);
 
@@ -119,6 +125,13 @@ static int queue_get(mc_queue *q, get_func gf, void *ctx) {
   mc_queue_entry *qe;
 
   pthread_mutex_lock(&q->mutex);
+
+  /* dummy queue */
+  if (!q->max_size) {
+    pthread_mutex_unlock(&q->mutex);
+    return 0;
+  }
+
   while (!q->head)
     pthread_cond_wait(&q->can_get, &q->mutex);
 
