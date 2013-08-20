@@ -15,6 +15,8 @@
 #define TS_FORMAT "%Y/%m/%d %H:%M:%S"
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_key_t tn_key;
+static unsigned max_name = 0;
 
 unsigned mc_log_level  = DEBUG;
 unsigned mc_log_colour = 1;
@@ -47,6 +49,30 @@ static void ts(char *buf, size_t sz) {
   snprintf(buf + len, sz - len, ".%06lu", (unsigned long) tv.tv_usec);
 }
 
+static pthread_key_t thread_key() {
+  static int done_init = 0;
+  if (!done_init) {
+    pthread_key_create(&tn_key, free);
+    done_init++;
+  }
+  return tn_key;
+}
+
+void mc_log_set_thread(const char *name) {
+  pthread_key_t key = thread_key();
+  char *old = pthread_getspecific(key);
+  if (old) free(old);
+  pthread_setspecific(key, mc_strdup(name));
+  pthread_mutex_lock(&mutex);
+  size_t len = strlen(name);
+  if (len > max_name) max_name = len;
+  pthread_mutex_unlock(&mutex);
+}
+
+const char *mc_log_get_thread(void) {
+  return pthread_getspecific(thread_key());
+}
+
 unsigned mc_log_decode_level(const char *name) {
   for (unsigned i = 0; i < MAXLEVEL; i++)
     if (!strcmp(name, lvl[i])) return i;
@@ -63,14 +89,22 @@ static void mc_log(unsigned level, const char *msg, va_list ap) {
     jd_var *ldr = jd_nv(), *str = jd_nv(), *ln = jd_nv();
 
     ts(tmp, sizeof(tmp));
-    jd_sprintf(ldr, "%s | %5lu | %-7s | ", tmp, (unsigned long) getpid(), lvl[level]);
+    pthread_mutex_lock(&mutex);
+    if (max_name) {
+      jd_var *fmt = jd_sprintf(jd_nv(), "%%s | %%5lu | %%-%ds | %%-7s | ", max_name);
+      jd_sprintvf(ldr, fmt, tmp, (unsigned long) getpid(),
+      mc_log_get_thread(), lvl[level]);
+    }
+    else {
+      jd_sprintf(ldr, "%s | %5lu | %-7s | ", tmp, (unsigned long) getpid(), lvl[level]);
+
+    }
     jd_vsprintf(str, msg, ap);
     jd_split(ln, str, jd_nsv("\n"));
     count = jd_count(ln);
     jd_var *last = jd_get_idx(ln, count - 1);
     if (jd_length(last) == 0) count--;
 
-    pthread_mutex_lock(&mutex);
     for (i = 0; i < count; i++) {
       jd_fprintf(stderr, "%s%V%V%s\n", col_on, ldr, jd_get_idx(ln, i), col_off);
     }
