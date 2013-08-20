@@ -46,6 +46,14 @@
          }
       },
       {
+         "enabled" : true,
+         "name" : "hd2",
+         "output" : {
+            "playlist" : "hd2.m3u8",
+            "segment" : "hd2/%08d/%04d.ts"
+         }
+      },
+      {
          "audio" : {
             "type" : "direct"
          },
