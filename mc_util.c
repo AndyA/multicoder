@@ -119,7 +119,7 @@ jd_var *mc_hash_merge(jd_var *out, jd_var *a, jd_var *b) {
   if (a == NULL || a->type != HASH || b->type != HASH) return jd_assign(out, b);
 
   scope {
-    jd_clone(out, a, 0);
+    jd_clone(out, a, 1);
     jd_var *keys = jd_keys(jd_nv(), b);
     unsigned kc = jd_count(keys);
     for (unsigned i = 0; i < kc; i++) {
