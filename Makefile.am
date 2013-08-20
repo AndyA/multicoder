@@ -27,6 +27,8 @@ libmulticoder_la_SOURCES = \
 	mc_model.c \
 	mc_model.h \
 	mc_mux_hls.c \
+	mc_hls.c \
+	mc_hls.h \
 	mc_queue.c \
 	mc_queue.h \
 	mc_segname.c \
