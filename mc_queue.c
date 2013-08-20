@@ -76,7 +76,7 @@ static void check_type(mc_queue *q, mc_queue_type t) {
     jd_throw("Unexpected %s call on %s queue", t_name[t], t_name[q->t]);
 }
 
-static void queue_put(mc_queue *q, put_func pf, void *ctx) {
+static void queue_only_put(mc_queue *q, put_func pf, void *ctx) {
   mc_queue_entry *qe;
 
   pthread_mutex_lock(&q->mutex);
@@ -112,10 +112,10 @@ static void queue_put(mc_queue *q, put_func pf, void *ctx) {
   }
 }
 
-static void queue_multi_put(mc_queue *q, put_func pf, void *ctx) {
+static void queue_put(mc_queue *q, put_func pf, void *ctx) {
   mc_queue *nq = q;
   do {
-    queue_put(nq, pf, ctx);
+    queue_only_put(nq, pf, ctx);
     nq = nq->pnext;
   }
   while (nq != q);
@@ -288,7 +288,7 @@ static int merger_get(mc_queue_merger *qm, get_func gf, void *ctx) {
 static void put_packet(mc_queue *q, mc_queue_entry *qe, void *ctx) {
   AVPacket *pkt = (AVPacket *) ctx;
   check_type(q, MC_PACKET);
-  av_copy_packet(&qe->d.pkt, pkt);
+  if (av_copy_packet(&qe->d.pkt, pkt)) jd_throw("Failed to copy packet");
 }
 
 static void get_packet(mc_queue *q, mc_queue_entry *qe, void *ctx) {
@@ -299,11 +299,11 @@ static void get_packet(mc_queue *q, mc_queue_entry *qe, void *ctx) {
 
 
 void mc_queue_only_packet_put(mc_queue *q, AVPacket *pkt) {
-  queue_put(q, put_packet, pkt);
+  queue_only_put(q, put_packet, pkt);
 }
 
 void mc_queue_packet_put(mc_queue *q, AVPacket *pkt) {
-  queue_multi_put(q, put_packet, pkt);
+  queue_put(q, put_packet, pkt);
 }
 
 int mc_queue_packet_get(mc_queue *q, AVPacket *pkt) {
@@ -333,11 +333,11 @@ static void get_frame(mc_queue *q, mc_queue_entry *qe, void *ctx) {
 }
 
 void mc_queue_only_frame_put(mc_queue *q, AVFrame *frame) {
-  queue_put(q, put_frame, frame);
+  queue_only_put(q, put_frame, frame);
 }
 
 void mc_queue_frame_put(mc_queue *q, AVFrame *frame) {
-  queue_multi_put(q, put_frame, frame);
+  queue_put(q, put_frame, frame);
 }
 
 int mc_queue_frame_get(mc_queue *q, AVFrame *frame) {
