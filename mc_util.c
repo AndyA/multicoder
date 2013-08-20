@@ -1,5 +1,6 @@
 /* mc_util.c */
 
+#include <errno.h>
 #include <jd_pretty.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -82,7 +83,7 @@ void mc_mkpath(const char *path, mode_t mode) {
     mc_mkpath(parent, mode);
     free(parent);
   }
-  if (mkdir(path, mode))
+  if (mkdir(path, mode) && errno != EEXIST)
     jd_throw("Can't create %s: %m", path);
 }
 
