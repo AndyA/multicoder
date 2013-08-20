@@ -1,6 +1,20 @@
 {
+   "default" : {
+      "audio" : {
+         "type" : "direct"
+      },
+      "output" : {
+         "gop" : 4,
+         "min_gop" : 1,
+         "min_time" : 7200,
+         "prefix" : "foo"
+      },
+      "video" : {
+         "type" : "direct"
+      }
+   },
    "global" : {
-      "log_level" : "INFO"
+      "log_level" : "DEBUG"
    },
    "streams" : [
       {
@@ -12,11 +26,7 @@
          "enabled" : false,
          "name" : "sd",
          "output" : {
-            "gop" : 4,
-            "min_gop" : 1,
-            "min_time" : 7200,
             "playlist" : "sd.m3u8",
-            "prefix" : "foo",
             "segment" : "sd/%08d/%04d.ts"
          },
          "video" : {
@@ -28,21 +38,11 @@
          }
       },
       {
-         "audio" : {
-            "type" : "direct"
-         },
          "enabled" : true,
          "name" : "hd",
          "output" : {
-            "gop" : 4,
-            "min_gop" : 1,
-            "min_time" : 7200,
             "playlist" : "hd.m3u8",
-            "prefix" : "foo",
             "segment" : "hd/%08d/%04d.ts"
-         },
-         "video" : {
-            "type" : "direct"
          }
       },
       {
@@ -52,11 +52,7 @@
          "enabled" : false,
          "name" : "mobile",
          "output" : {
-            "gop" : 4,
-            "min_gop" : 1,
-            "min_time" : 7200,
             "playlist" : "mobile.m3u8",
-            "prefix" : "foo",
             "segment" : "mobile/%08d/%04d.ts"
          },
          "video" : {
