@@ -16,6 +16,16 @@
    "global" : {
       "log_level" : "INFO"
    },
+   "roots" : [
+      {
+         "include" : [
+            "sd",
+            "hd",
+            "mobile"
+         ],
+         "playlist" : "root.m3u8"
+      }
+   ],
    "streams" : [
       {
          "audio" : {
