@@ -176,15 +176,15 @@ void mc_queue_merger_add(mc_queue_merger *qm, mc_queue *q) {
   q->m = qm;
 }
 
-static void free_list(mc_queue *q) {
+static void unhook_list(mc_queue *q) {
   for (mc_queue *next = q; next; q = next) {
     next = q->mnext;
-    mc_queue_free(q);
+    q->mnext = NULL;
   }
 }
 
 void mc_queue_merger_empty(mc_queue_merger *qm) {
-  free_list(qm->head);
+  unhook_list(qm->head);
   qm->head = NULL;
 }
 
