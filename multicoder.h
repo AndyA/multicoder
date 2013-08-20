@@ -38,6 +38,8 @@ extern unsigned mc_log_colour;
 void mc_log_avutil(void *ptr, int level, const char *msg, va_list ap);
 
 unsigned mc_log_decode_level(const char *name);
+void mc_log_set_thread(const char *name);
+const char *mc_log_get_thread(void);
 
 void mc_debug(const char *msg, ...);
 void mc_info(const char *msg, ...);

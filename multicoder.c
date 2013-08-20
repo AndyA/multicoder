@@ -68,7 +68,7 @@ static jd_var *make_queue(jd_var *ctx, jd_var *out, const char *kind, jd_var *sp
     jd_assign(out, src);
   }
   else {
-    jd_throw("Unhandled stream type: %V", type);
+    jd_throw("Unhandled %s stream type: %V", kind, type);
   }
 
   return out;
@@ -115,7 +115,11 @@ static void setup(jd_var *ctx) {
 
 static void *muxer(void *ctx) {
   muxer_context *mcx = ctx;
-  mc_mux_hls(mcx->ic, &mcx->cfg, mcx->in);
+  scope {
+    jd_var *name = jd_sprintf(jd_nv(), "mux.%V", jd_get_ks(&mcx->cfg, "name", 0));
+    mc_log_set_thread(jd_bytes(name, NULL));
+    mc_mux_hls(mcx->ic, &mcx->cfg, mcx->in);
+  }
   return NULL;
 }
 
@@ -163,14 +167,12 @@ static jd_var *merge_default(jd_var *out, jd_var *cfg) {
     jd_var *dflt = jd_get_ks(cfg, "default", 0);
     jd_var *streams = jd_get_ks(cfg, "streams", 0);
 
-    if (streams) {
-      size_t count = jd_count(streams);
-      jd_set_array(out, count);
-      for (unsigned i = 0; i < count; i++) {
-        jd_var *stm = jd_get_idx(streams, i);
-        if (mc_model_get_int(stm, 1, "$.enabled"))
-          mc_hash_merge(jd_push(out, 1), dflt, stm);
-      }
+    size_t count = jd_count(streams);
+    jd_set_array(out, count);
+    for (unsigned i = 0; i < count; i++) {
+      jd_var *stm = jd_get_idx(streams, i);
+      if (mc_model_get_int(stm, 1, "$.enabled"))
+        mc_hash_merge(jd_push(out, 1), dflt, stm);
     }
   }
   return out;
@@ -203,6 +205,7 @@ int main(int argc, char *argv[]) {
 
     if (argc != 3) jd_throw("Syntax: multicoder <config.json> <input>");
 
+    mc_log_set_thread("main");
     mc_info("Starting multicoder");
 
     mc_queue *aq = mc_queue_new(0);
