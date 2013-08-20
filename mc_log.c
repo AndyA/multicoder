@@ -63,10 +63,6 @@ void mc_log_set_thread(const char *name) {
   char *old = pthread_getspecific(key);
   if (old) free(old);
   pthread_setspecific(key, mc_strdup(name));
-  pthread_mutex_lock(&mutex);
-  size_t len = strlen(name);
-  if (len > max_name) max_name = len;
-  pthread_mutex_unlock(&mutex);
 }
 
 const char *mc_log_get_thread(void) {
@@ -87,10 +83,15 @@ static void mc_log(unsigned level, const char *msg, va_list ap) {
     unsigned i;
     size_t count;
     jd_var *ldr = jd_nv(), *str = jd_nv(), *ln = jd_nv();
+    const char *pname = mc_log_get_thread();
+    if (!pname && max_name) pname = "anon";
 
     ts(tmp, sizeof(tmp));
+
     pthread_mutex_lock(&mutex);
-    if (max_name) {
+    if (pname) {
+      size_t len = strlen(pname);
+      if (len > max_name) max_name = len;
       jd_var *fmt = jd_sprintf(jd_nv(), "%%s | %%5lu | %%-%ds | %%-7s | ", max_name);
       jd_sprintvf(ldr, fmt, tmp, (unsigned long) getpid(),
       mc_log_get_thread(), lvl[level]);
