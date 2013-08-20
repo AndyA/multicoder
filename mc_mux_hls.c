@@ -103,7 +103,7 @@ static void seg_open(context *ctx, AVFormatContext *oc) {
     const char *name = mc_segname_name(ctx->segn);
     const char *temp = mc_segname_temp(ctx->segn);
 
-    mc_debug("writing %s (as %s)", name, temp);
+    mc_info("Writing %s (as %s)", name, temp);
     mc_mkfilepath(temp, 0777);
 
     if (avio_open(&oc->pb, temp, AVIO_FLAG_WRITE) < 0)
@@ -165,7 +165,7 @@ static void cleanup(context *ctx) {
           jd_var *uri = jd_get_ks(seg, "uri", 0);
           if (uri) {
             char *fn = mc_segname_prefix(ctx->segn, jd_bytes(uri, NULL));
-            mc_debug("Purging %s", fn);
+            mc_info("Purging %s", fn);
             if (unlink(fn)) mc_warning("Failed to delete %s: %m", fn);
             free(fn);
           }
@@ -187,7 +187,7 @@ static void m3u8_push_segment(context *ctx,
     cleanup(ctx);
     hls_m3u8_save(ctx->m3u8, mc_segname_temp(ctx->pln));
     mc_segname_rename(ctx->pln);
-    mc_debug("Updated %s", mc_segname_name(ctx->pln));
+    mc_info("Updated %s", mc_segname_name(ctx->pln));
     mc_segname_inc(ctx->pln);
   }
 }
@@ -288,7 +288,7 @@ void mc_mux_hls(AVFormatContext *ic, jd_var *cfg, mc_queue_merger *qm) {
       seg_open(&ctx, oc);
 
       if (av_interleaved_write_frame(oc, &pkt))
-        jd_throw("Can't write frame");
+        mc_error("Can't write frame");
 
       av_free_packet(&pkt);
     }
