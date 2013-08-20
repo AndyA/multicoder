@@ -48,19 +48,35 @@
          }
       },
       {
+         "audio" : {
+            "bit_rate" : 128000,
+            "type" : "direct"
+         },
          "enabled" : true,
          "name" : "hd",
          "output" : {
             "playlist" : "hd.m3u8",
             "segment" : "hd/%08d/%04d.ts"
+         },
+         "video" : {
+            "bit_rate" : 1500000,
+            "type" : "direct"
          }
       },
       {
+         "audio" : {
+            "bit_rate" : 128000,
+            "type" : "direct"
+         },
          "enabled" : true,
          "name" : "hd2",
          "output" : {
             "playlist" : "hd2.m3u8",
             "segment" : "hd2/%08d/%04d.ts"
+         },
+         "video" : {
+            "bit_rate" : 1500000,
+            "type" : "direct"
          }
       },
       {

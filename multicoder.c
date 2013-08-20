@@ -8,6 +8,7 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 
+#include "hls.h"
 #include "multicoder.h"
 
 typedef struct {
@@ -86,31 +87,31 @@ static jd_var *get_queue(jd_var *ctx, const char *kind, jd_var *spec) {
   return slot;
 }
 
-static void setup_stream(jd_var *ctx, jd_var *stm, const char *kind, jd_var *spec) {
-  mc_debug("Configuring %V %s", jd_get_ks(stm, "name", 0), kind);
-  mc_queue *head = jd_ptr(get_queue(ctx, kind, spec));
-  mc_queue *q = mc_queue_new(200);
-  mc_queue_hook(head, q);
-  jd_set_object(jd_get_ks(spec, "source", 1), q, queue_free);
-}
-
-static void with_streams(
-  jd_var *ctx, void (*cb)(jd_var *ctx, jd_var *stm, const char *kind, jd_var *spec)) {
+static void setup(jd_var *ctx) {
   scope {
     jd_var *streams = jd_get_ks(ctx, "streams", 0);
     for (unsigned i = 0; i < jd_count(streams); i++) {
       jd_var *stm = jd_get_idx(streams, i);
+
+      jd_var *name = jd_get_ks(stm, "name", 0);
+      if (!name) jd_throw("Missing name for stream");
+      jd_var *slot = jd_get_key(jd_get_ks(ctx, "by_name", 0), name, 1);
+      if (slot->type != VOID) jd_throw("%V already registered", name);
+      jd_assign(slot, stm);
+
       for (unsigned k = 0; k < sizeof(kinds) / sizeof(kinds[0]); k++) {
         const char *kind = kinds[k];
         jd_var *spec = jd_get_ks(stm, kind, 0);
-        if (spec) cb(ctx, stm, kind, spec);
+        if (spec) {
+          mc_debug("Configuring %V %s", jd_get_ks(stm, "name", 0), kind);
+          mc_queue *head = jd_ptr(get_queue(ctx, kind, spec));
+          mc_queue *q = mc_queue_new(200);
+          mc_queue_hook(head, q);
+          jd_set_object(jd_get_ks(spec, "source", 1), q, queue_free);
+        }
       }
     }
   }
-}
-
-static void setup(jd_var *ctx) {
-  with_streams(ctx, setup_stream);
 }
 
 static void *muxer(void *ctx) {
@@ -186,11 +187,38 @@ static jd_var *build_context(jd_var *ctx, jd_var *cfg,
     merge_default(jd_get_ks(ctx, "streams", 1), cfg);
     jd_set_hash(jd_get_ks(ctx, "inputs", 1), 10);
     jd_set_array(jd_get_ks(ctx, "workers", 1), 10);
+    jd_set_hash(jd_get_ks(ctx, "by_name", 1), 10);
     jd_var *sources = jd_set_hash(jd_get_ks(ctx, "sources", 1), 10);
     jd_set_object(jd_get_ks(sources, "audio", 1), aq, NULL);
     jd_set_object(jd_get_ks(sources, "video", 1), vq, NULL);
   }
   return ctx;
+}
+
+static void make_roots(jd_var *ctx) {
+  scope {
+    jd_var *roots = jd_rv(ctx, "$.config.roots");
+    if (!roots) {
+      mc_warning("No roots defined");
+      JD_RETURN_VOID;
+    }
+    for (unsigned i = 0; i < jd_count(roots); i++) {
+      jd_var *spec = jd_get_idx(roots, i);
+      jd_var *m3u8 = mc_hls_make_root(jd_nv(), ctx, spec);
+
+      jd_var *prefix = jd_rv(ctx, "$.config.default.output.prefix");
+
+      mc_segname *sn = mc_segname_new_prefixed(
+        jd_bytes(jd_get_ks(spec, "playlist", 0), NULL),
+        jd_bytes(prefix, NULL));
+
+      const char *fn = mc_segname_temp(sn);
+      mc_mkfilepath(fn, 0777);
+      hls_m3u8_save(m3u8, fn);
+      mc_segname_rename(sn);
+      mc_info("Updated %s", mc_segname_name(sn));
+    }
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -206,17 +234,17 @@ int main(int argc, char *argv[]) {
     if (argc != 3) jd_throw("Syntax: multicoder <config.json> <input>");
 
     mc_log_set_thread("main");
+    jd_var *cfg = mc_model_load_file(jd_nv(), argv[1]);
+    mc_log_level = mc_log_decode_level(
+      mc_model_get_str(cfg, "INFO", "$.global.log_level"));
+
     mc_info("Starting multicoder");
 
     mc_queue *aq = mc_queue_new(0);
     mc_queue *vq = mc_queue_new(0);
 
-    jd_var *cfg = mc_model_load_file(jd_nv(), argv[1]);
     jd_var *ctx = build_context(jd_nv(), cfg, aq, vq);
     setup(ctx);
-
-    mc_log_level = mc_log_decode_level(
-      mc_model_get_str(cfg, "INFO", "$.global.log_level"));
 
     if (avformat_open_input(&ic, argv[2], NULL, NULL) < 0)
       jd_throw("Can't open %s", argv[2]);
@@ -227,7 +255,9 @@ int main(int argc, char *argv[]) {
     /* add ic to context */
     jd_set_object(jd_get_ks(ctx, "ic", 1), ic, NULL);
 
-    mc_debug("Active context:\n%lJ", ctx);
+    mc_info("Active context:\n%lJ", ctx);
+
+    make_roots(ctx);
 
     startup_workers(ctx);
 
