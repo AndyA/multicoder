@@ -11,7 +11,6 @@
 
 #include "jd_pretty.h"
 
-#include "mc_buffer.h"
 #include "mc_hls.h"
 #include "mc_model.h"
 #include "mc_queue.h"
