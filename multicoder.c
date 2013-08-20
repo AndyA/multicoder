@@ -65,10 +65,7 @@ static jd_var *make_queue(jd_var *ctx, jd_var *out, const char *kind, jd_var *sp
   if (!strcmp(tn, "direct")) {
     jd_var *src = jd_rv(ctx, "$.sources.%s", kind);
     if (!src) jd_throw("Can't find %s source", kind);
-    mc_queue *head = jd_ptr(src);
-    mc_queue *q = mc_queue_new(200);
-    mc_queue_hook(head, q);
-    jd_set_object(out, q, queue_free);
+    jd_assign(out, src);
   }
   else {
     jd_throw("Unhandled stream type: %V", type);
@@ -91,8 +88,10 @@ static jd_var *get_queue(jd_var *ctx, const char *kind, jd_var *spec) {
 
 static void setup_stream(jd_var *ctx, jd_var *stm, const char *kind, jd_var *spec) {
   mc_debug("Configuring %V %s", jd_get_ks(stm, "name", 0), kind);
-  jd_var *iq = get_queue(ctx, kind, spec);
-  jd_assign(jd_get_ks(spec, "source", 1), iq);
+  mc_queue *head = jd_ptr(get_queue(ctx, kind, spec));
+  mc_queue *q = mc_queue_new(200);
+  mc_queue_hook(head, q);
+  jd_set_object(jd_get_ks(spec, "source", 1), q, queue_free);
 }
 
 static void with_streams(
