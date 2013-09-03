@@ -206,6 +206,7 @@ static void make_roots(jd_var *ctx) {
       jd_var *spec = jd_get_idx(roots, i);
       jd_var *m3u8 = mc_hls_make_root(jd_nv(), ctx, spec);
 
+      /* TODO default prefix? Required? */
       jd_var *prefix = jd_rv(ctx, "$.config.default.output.prefix");
 
       mc_segname *sn = mc_segname_new_prefixed(
